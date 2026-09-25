@@ -1,0 +1,11 @@
+services:
+  analyzer:
+    build: .
+    network_mode: host
+
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+
+    volumes:
+      - ./data:/app/data

@@ -1,0 +1,4 @@
+ Container analizador-de-trafego-analyzer-run-19664f5631a5 Creating 
+ Container analizador-de-trafego-analyzer-run-19664f5631a5 Created 
+ERROR: Interface 'eth9' not found. Available: lo, eth0, docker0, br-eb5afb3aa790
+

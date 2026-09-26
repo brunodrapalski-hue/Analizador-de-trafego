@@ -1,0 +1,79 @@
+ Container analizador-de-trafego-quality-run-898b1c2cae5c Creating 
+ Container analizador-de-trafego-quality-run-898b1c2cae5c Created 
+==> [1/5] Lint (ruff)
+All checks passed!
+==> [2/5] Formatting (ruff)
+13 files already formatted
+==> [3/5] Tests (pytest)
+============================= test session starts ==============================
+platform linux -- Python 3.13.15, pytest-9.1.1, pluggy-1.6.0 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+configfile: pyproject.toml
+testpaths: tests
+collecting ... collected 31 items
+
+tests/test_capture.py::test_read_pcap_stores_ip_packets_in_batches PASSED [  3%]
+tests/test_capture.py::test_session_counters_are_saved PASSED            [  6%]
+tests/test_capture.py::test_read_missing_pcap_raises PASSED              [  9%]
+tests/test_capture.py::test_live_capture_rejects_unknown_interface PASSED [ 12%]
+tests/test_capture.py::test_demo_pcap_end_to_end PASSED                  [ 16%]
+tests/test_capture.py::test_cli_capture_pcap_returns_success PASSED      [ 19%]
+tests/test_capture.py::test_cli_missing_pcap_returns_error PASSED        [ 22%]
+tests/test_parser.py::test_ipv4_protocol_classification[packet0-TCP] PASSED [ 25%]
+tests/test_parser.py::test_ipv4_protocol_classification[packet1-UDP] PASSED [ 29%]
+tests/test_parser.py::test_ipv4_protocol_classification[packet2-ICMP] PASSED [ 32%]
+tests/test_parser.py::test_ipv4_protocol_classification[packet3-OTHER] PASSED [ 35%]
+tests/test_parser.py::test_ipv6_packet PASSED                            [ 38%]
+tests/test_parser.py::test_non_ip_packet_is_discarded PASSED             [ 41%]
+tests/test_parser.py::test_length_is_full_frame_size PASSED              [ 45%]
+tests/test_parser.py::test_demo_pcap_matches_reference_numbers PASSED    [ 48%]
+tests/test_stats.py::test_totals_for_all_sessions PASSED                 [ 51%]
+tests/test_stats.py::test_totals_for_one_session PASSED                  [ 54%]
+tests/test_stats.py::test_packets_by_protocol PASSED                     [ 58%]
+tests/test_stats.py::test_top_sources_differ_by_packets_and_bytes PASSED [ 61%]
+tests/test_stats.py::test_top_destinations PASSED                        [ 64%]
+tests/test_stats.py::test_top_is_limited_to_five PASSED                  [ 67%]
+tests/test_stats.py::test_empty_database PASSED                          [ 70%]
+tests/test_stats.py::test_report_rendering PASSED                        [ 74%]
+tests/test_stats.py::test_demo_pcap_statistics PASSED                    [ 77%]
+tests/test_stats.py::test_cli_stats_and_sessions PASSED                  [ 80%]
+tests/test_stats.py::test_cli_stats_unknown_session_returns_error PASSED [ 83%]
+tests/test_storage.py::test_schema_is_created PASSED                     [ 87%]
+tests/test_storage.py::test_opening_existing_database_keeps_data PASSED  [ 90%]
+tests/test_storage.py::test_session_lifecycle PASSED                     [ 93%]
+tests/test_storage.py::test_packet_fields_are_persisted PASSED           [ 96%]
+tests/test_storage.py::test_packet_requires_existing_session PASSED      [100%]
+
+============================== 31 passed in 1.12s ==============================
+==> [4/5] Static security analysis (bandit)
+[main]	INFO	profile include tests: None
+[main]	INFO	profile exclude tests: None
+[main]	INFO	cli include tests: None
+[main]	INFO	cli exclude tests: None
+[main]	INFO	running on Python 3.13.15
+Run started:2026-09-26 04:07:39.344311+00:00
+
+Test results:
+	No issues identified.
+
+Code scanned:
+	Total lines of code: 560
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 0
+Files skipped (0):
+==> [5/5] Dependency vulnerabilities (pip-audit)
+No known vulnerabilities found
+==> All checks passed.

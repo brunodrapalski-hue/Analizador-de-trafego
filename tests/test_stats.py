@@ -1,6 +1,6 @@
 """Tests for app.stats, app.report and the stats/sessions commands."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -18,7 +18,7 @@ SAMPLE_PCAP = Path(__file__).resolve().parent.parent / "samples" / "demo.pcap"
 
 def record(src: str, dst: str, protocol: str, length: int) -> PacketRecord:
     return PacketRecord(
-        captured_at=datetime(2026, 9, 25, 12, 0, tzinfo=timezone.utc),
+        captured_at=datetime(2026, 9, 25, 12, 0, tzinfo=UTC),
         ip_version=4,
         src_ip=src,
         dst_ip=dst,

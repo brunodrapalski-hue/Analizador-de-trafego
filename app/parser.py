@@ -9,7 +9,7 @@ Design decisions (see docs):
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from scapy.layers.inet import IP
 from scapy.layers.inet6 import IPv6
@@ -66,7 +66,7 @@ def parse_packet(packet: Packet) -> PacketRecord | None:
         return None
 
     return PacketRecord(
-        captured_at=datetime.fromtimestamp(float(packet.time), tz=timezone.utc),
+        captured_at=datetime.fromtimestamp(float(packet.time), tz=UTC),
         ip_version=ip_version,
         src_ip=layer.src,
         dst_ip=layer.dst,

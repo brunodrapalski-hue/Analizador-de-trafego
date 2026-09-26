@@ -2,7 +2,7 @@
 
 import sqlite3
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.parser import PacketRecord
@@ -46,7 +46,7 @@ INSERT INTO packets (
 
 def utc_now() -> str:
     """Current time as an ISO 8601 UTC string."""
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 class Storage:

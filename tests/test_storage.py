@@ -1,7 +1,7 @@
 """Tests for app.storage."""
 
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -11,7 +11,7 @@ from app.storage import Storage
 
 def make_record(src_ip: str = "10.0.0.1", protocol: str = "TCP") -> PacketRecord:
     return PacketRecord(
-        captured_at=datetime(2026, 9, 25, 12, 0, tzinfo=timezone.utc),
+        captured_at=datetime(2026, 9, 25, 12, 0, tzinfo=UTC),
         ip_version=4,
         src_ip=src_ip,
         dst_ip="10.0.0.2",
@@ -74,7 +74,14 @@ def test_packet_fields_are_persisted(storage):
         "SELECT captured_at, ip_version, src_ip, dst_ip, protocol, length FROM packets"
     ).fetchone()
 
-    assert row == ("2026-09-25T12:00:00+00:00", 4, "192.168.0.10", "10.0.0.2", "TCP", 60)
+    assert row == (
+        "2026-09-25T12:00:00+00:00",
+        4,
+        "192.168.0.10",
+        "10.0.0.2",
+        "TCP",
+        60,
+    )
 
 
 def test_packet_requires_existing_session(storage):

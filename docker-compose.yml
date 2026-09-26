@@ -18,3 +18,11 @@ services:
       target: test
     image: traffic-analyzer-tests:1.0.0
     profiles: ["test"]
+
+  quality:
+    image: traffic-analyzer-tests:1.0.0
+    build:
+      context: .
+      target: test
+    entrypoint: ["sh", "scripts/check.sh"]
+    profiles: ["test"]

@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege: the workflow only needs to read the repository
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Quality and security
+    runs-on: ubuntu-latest
+    steps:
+      # Actions pinned by commit SHA (supply chain protection)
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Lint, tests, SAST and dependency audit
+        run: docker compose run --rm --build quality
+
+      - name: Build runtime image
+        run: docker compose build analyzer
+
+      - name: Image scan report (HIGH and CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: traffic-analyzer:1.0.0
+          severity: HIGH,CRITICAL
+          format: table
+          exit-code: "0"
+
+      - name: Image scan gate (fixable CRITICAL fails the build)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: traffic-analyzer:1.0.0
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"

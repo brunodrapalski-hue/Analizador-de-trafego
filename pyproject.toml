@@ -1,0 +1,19 @@
+[project]
+name = "traffic-analyzer"
+version = "1.0.0"
+description = "Network packet capture, SQLite storage and traffic statistics."
+requires-python = ">=3.13"
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+# E/W: style, F: errors, I: imports, B: bug patterns, UP: modern syntax, S: security
+select = ["E", "W", "F", "I", "B", "UP", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # assert is expected in tests
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

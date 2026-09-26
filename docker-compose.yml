@@ -1,11 +1,11 @@
 services:
   analyzer:
     build: .
+    image: traffic-analyzer:1.0.0
     network_mode: host
-
     cap_add:
       - NET_RAW
       - NET_ADMIN
-
     volumes:
       - ./data:/app/data
+      - ./samples:/app/samples:ro

@@ -1,0 +1,6 @@
+data/
+docs/
+tests/
+samples/
+**/__pycache__/
+*.db

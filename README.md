@@ -40,7 +40,7 @@ flowchart LR
 - **Gravação:** em lotes (padrão: 100 pacotes por transação). Cada captura gera uma sessão no banco.
 - **Payload:** o conteúdo dos pacotes não é gravado.
 
-## Resultado de referência — `samples/demo.pcap`
+## Resultado de referência
 
 | Métrica | Valor |
 |---|---:|

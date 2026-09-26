@@ -1,6 +1,8 @@
 services:
   analyzer:
-    build: .
+    build:
+      context: .
+      target: runtime
     image: traffic-analyzer:1.0.0
     network_mode: host
     cap_add:
@@ -9,3 +11,10 @@ services:
     volumes:
       - ./data:/app/data
       - ./samples:/app/samples:ro
+
+  tests:
+    build:
+      context: .
+      target: test
+    image: traffic-analyzer-tests:1.0.0
+    profiles: ["test"]

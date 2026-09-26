@@ -1,6 +1,6 @@
+.git
 data/
 docs/
-tests/
-samples/
 **/__pycache__/
+.pytest_cache/
 *.db

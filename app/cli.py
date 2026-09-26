@@ -4,13 +4,17 @@ import argparse
 import logging
 from pathlib import Path
 
+from rich.console import Console
 from scapy.error import Scapy_Exception
 
 from app import config
 from app.capture import CaptureResult, capture_live, read_pcap
+from app.report import render_sessions, render_stats
+from app.stats import compute_stats, list_sessions, session_exists
 from app.storage import Storage
 
 logger = logging.getLogger(__name__)
+console = Console()
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -54,6 +58,16 @@ def build_parser() -> argparse.ArgumentParser:
         dest="bpf_filter",
         help='live capture: BPF filter, e.g. "tcp or udp"',
     )
+
+    stats = commands.add_parser("stats", help="show traffic statistics")
+    stats.add_argument(
+        "-s",
+        "--session",
+        type=int,
+        help="session id (default: all sessions)",
+    )
+
+    commands.add_parser("sessions", help="list capture sessions")
     return parser
 
 
@@ -70,21 +84,44 @@ def run_capture(args: argparse.Namespace, storage: Storage) -> CaptureResult:
     )
 
 
-def main(argv: list[str] | None = None) -> int:
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-    args = build_parser().parse_args(argv)
-
-    try:
-        with Storage(args.db) as storage:
-            result = run_capture(args, storage)
-    except (FileNotFoundError, ValueError, PermissionError, Scapy_Exception) as error:
-        logger.error(error)
-        return 1
-
+def command_capture(args: argparse.Namespace, storage: Storage) -> None:
+    result = run_capture(args, storage)
     logger.info(
         "Session %d finished: %d packets stored, %d non-IP packets ignored.",
         result.session_id,
         result.packets_stored,
         result.packets_ignored,
     )
+    render_stats(console, compute_stats(storage.connection, result.session_id))
+
+
+def command_stats(args: argparse.Namespace, storage: Storage) -> None:
+    if args.session is not None and not session_exists(
+        storage.connection, args.session
+    ):
+        raise ValueError(f"Session {args.session} not found.")
+    render_stats(console, compute_stats(storage.connection, args.session))
+
+
+def command_sessions(args: argparse.Namespace, storage: Storage) -> None:
+    render_sessions(console, list_sessions(storage.connection))
+
+
+COMMANDS = {
+    "capture": command_capture,
+    "stats": command_stats,
+    "sessions": command_sessions,
+}
+
+
+def main(argv: list[str] | None = None) -> int:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    args = build_parser().parse_args(argv)
+
+    try:
+        with Storage(args.db) as storage:
+            COMMANDS[args.command](args, storage)
+    except (FileNotFoundError, ValueError, PermissionError, Scapy_Exception) as error:
+        logger.error(error)
+        return 1
     return 0

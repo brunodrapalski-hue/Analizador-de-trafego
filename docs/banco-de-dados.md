@@ -2,15 +2,11 @@
 
 ## Escolha: SQLite
 
-A solução precisa persistir os pacotes capturados em um banco de dados. O SQLite foi escolhido porque:
+O desafio exige persistência em banco de dados, sem definir a tecnologia. O SQLite atende sem servidor, usuário ou senha: o banco é um arquivo (`data/traffic.db`) em um volume Docker. Ele também oferece SQL, transações, chaves estrangeiras e restrições `CHECK`.
 
-- é um arquivo único, sem servidor, senha ou serviço adicional de banco, reduzindo a configuração necessária para executar a aplicação;
-- oferece SQL completo, transações ACID, chaves estrangeiras e restrições `CHECK`;
-- atende ao cenário de uma ferramenta de análise local com um único processo gravando.
+O limite é a concorrência: o SQLite suporta um processo gravando por vez. Para vários sensores capturando ao mesmo tempo, PostgreSQL seria a evolução natural. A troca exigiria adaptar `app/storage.py` e as consultas de `app/stats.py`; o fluxo de captura continuaria o mesmo.
 
-**Evolução prevista:** para vários sensores capturando ao mesmo tempo ou acesso remoto concorrente, PostgreSQL é uma evolução possível. A troca exigiria adaptar a persistência em `app/storage.py` e as consultas SQL em `app/stats.py`; o fluxo de captura poderia permanecer o mesmo.
-
-## Diagrama ER
+## Modelo
 
 ```mermaid
 erDiagram
@@ -19,11 +15,11 @@ erDiagram
     capture_sessions {
         INTEGER id PK
         TEXT source "iface:eth0 ou pcap:demo.pcap"
-        TEXT bpf_filter "filtro usado (opcional)"
+        TEXT bpf_filter "opcional"
         TEXT started_at "ISO 8601 UTC"
         TEXT finished_at "ISO 8601 UTC"
         INTEGER packets_stored
-        INTEGER packets_ignored "não-IP descartados"
+        INTEGER packets_ignored "frames não-IP"
     }
 
     packets {
@@ -34,12 +30,14 @@ erDiagram
         TEXT src_ip
         TEXT dst_ip
         TEXT protocol "TCP, UDP, ICMP, ICMPv6, OTHER"
-        INTEGER protocol_num "número IP original"
+        INTEGER protocol_num
         INTEGER length "bytes do frame"
     }
 ```
 
-## Schema (DDL)
+## Schema
+
+Criado automaticamente na primeira execução (`CREATE ... IF NOT EXISTS`) e preservado nas seguintes. Fonte: `SCHEMA` em `app/storage.py`.
 
 ```sql
 CREATE TABLE IF NOT EXISTS capture_sessions (
@@ -70,55 +68,69 @@ CREATE INDEX IF NOT EXISTS idx_packets_src_ip   ON packets(src_ip);
 CREATE INDEX IF NOT EXISTS idx_packets_dst_ip   ON packets(dst_ip);
 ```
 
-O schema é criado automaticamente na primeira execução (`CREATE ... IF NOT EXISTS`) e preservado nas seguintes.
+## Por que este modelo
 
-## Justificativa do modelo
-
-| Elemento | Justificativa |
+| Elemento | Motivo |
 |---|---|
-| Tabela `capture_sessions` | Cada captura é auditável: origem, filtro, início, fim e contadores. Permite estatísticas por sessão ou globais. |
-| `packets_ignored` na sessão | Pacotes não-IP não têm os campos exigidos e não são armazenados, mas são **contados** — nenhum descarte é silencioso. |
-| `protocol` + `protocol_num` | O nome facilita a leitura; o número original preserva a informação quando o protocolo é classificado como `OTHER`. |
-| `ip_version` | Distingue IPv4 e IPv6 sem precisar interpretar o formato do endereço. |
-| Datas em texto ISO 8601 UTC | Formato padrão, ordenável e sem ambiguidade de fuso horário. |
-| Sem coluna de conteúdo (payload) | Minimização de dados: só o necessário para as estatísticas (ver [seguranca.md](seguranca.md)). |
+| Tabela `capture_sessions` | Cada captura fica registrada com origem, filtro, início, fim e contadores. Permite estatísticas por sessão ou de todas as sessões. |
+| `packets_ignored` | Frames não-IP (ex.: ARP) não têm os campos pedidos e não viram linha em `packets`, mas são contados na sessão. |
+| `protocol` + `protocol_num` | O nome facilita a leitura; o número preserva a informação quando o protocolo é classificado como `OTHER`. |
+| `ip_version` | Distingue IPv4 de IPv6 sem interpretar o texto do endereço. |
+| `length` | Tamanho do frame completo, o mesmo critério da coluna *Length* do Wireshark. |
+| Datas ISO 8601 em UTC | Texto ordenável e sem ambiguidade de fuso. |
+| Sem payload | Só os metadados necessários para as estatísticas são gravados. |
 
 ## Integridade
 
 | Controle | Efeito |
 |---|---|
-| `PRAGMA foreign_keys = ON` + `REFERENCES` | Um pacote não pode existir sem sessão (coberto por teste) |
-| `CHECK (ip_version IN (4, 6))` | Rejeita versões inválidas |
-| `CHECK (length >= 0)` | Rejeita tamanhos negativos |
-| `NOT NULL` | Campos obrigatórios sempre preenchidos |
-| Transação por lote | Um lote é gravado por inteiro ou não é gravado |
+| `REFERENCES` + `PRAGMA foreign_keys = ON` | Um pacote não pode existir sem sessão. O SQLite exige ativar a verificação a cada conexão, e `Storage` faz isso (teste: `test_packet_requires_existing_session`). |
+| `CHECK` e `NOT NULL` | Rejeitam versão IP inválida, tamanho negativo e campos obrigatórios vazios. |
+| Transação por lote | `insert_packets` grava o lote inteiro ou nenhuma linha dele. |
 
-## Índices
-
-Cada índice atende a uma consulta das estatísticas: filtro por sessão (`session_id`), contagem por protocolo (`protocol`) e rankings de origem e destino (`src_ip`, `dst_ip`).
+Se o processo for encerrado por sinal (ex.: `kill`, `kill -9` ou `docker stop`), e não por Ctrl+C, `--count` ou `--duration`, a sessão fica sem `finished_at` e o lote que ainda estava em memória se perde. Os lotes já gravados permanecem no banco.
 
 ## Consultas das estatísticas
 
-Todas as consultas são estáticas e parametrizadas. O padrão `(? IS NULL OR session_id = ?)` permite usar a mesma consulta para uma sessão ou para todas, sem montar SQL a partir de texto.
+Todas as consultas estão em `app/stats.py`. São estáticas e parametrizadas, sem montar SQL a partir de texto. O filtro `(? IS NULL OR session_id = ?)` permite usar a mesma consulta para uma sessão ou para todas.
 
 ```sql
--- Total de pacotes e bytes
+-- Total de pacotes IP e bytes
 SELECT COUNT(*), COALESCE(SUM(length), 0)
 FROM packets WHERE (? IS NULL OR session_id = ?);
+
+-- Frames não-IP (vêm do contador da sessão)
+SELECT COALESCE(SUM(packets_ignored), 0)
+FROM capture_sessions WHERE (? IS NULL OR id = ?);
 
 -- Pacotes por protocolo
 SELECT protocol, COUNT(*) AS packets, SUM(length) AS bytes
 FROM packets WHERE (? IS NULL OR session_id = ?)
 GROUP BY protocol ORDER BY packets DESC, protocol;
 
--- Top 5 IPs de origem por pacotes (destino e ordenação por bytes são análogos)
+-- Top 5 origens por pacotes (destino e ordenação por bytes são análogos)
 SELECT src_ip, COUNT(*) AS packets, SUM(length) AS bytes
 FROM packets WHERE (? IS NULL OR session_id = ?)
 GROUP BY src_ip ORDER BY packets DESC, bytes DESC, src_ip LIMIT 5;
 ```
 
-O desempate (bytes e depois IP) torna o ranking determinístico.
+O resumo exibido soma as duas fontes: **total capturado = pacotes IP + frames não-IP**.
 
-## Consultando o banco manualmente
+O desempate (bytes, depois o IP) torna o ranking determinístico. Na amostra, `142.251.155.119` e `108.158.137.57` empatam com 18 pacotes como destino, e o primeiro fica à frente por ter mais bytes.
 
-O arquivo `data/traffic.db` pode ser aberto no **DB Browser for SQLite** (use *Open Database Read Only* para não bloquear o arquivo durante uma captura). No Windows com WSL2, o caminho é `\\wsl.localhost\Ubuntu-24.04\home\<usuário>\Analizador-de-trafego\data\traffic.db`.
+## Índices
+
+Os índices seguem as colunas de filtro e agrupamento. Na prática, o planner do SQLite usa os de `protocol`, `src_ip` e `dst_ip` para percorrer os dados já ordenados no `GROUP BY`. O de `session_id` não é aproveitado por essas consultas, porque a condição `(? IS NULL OR ...)` impede isso. Para verificar:
+
+```sql
+EXPLAIN QUERY PLAN SELECT COUNT(*), SUM(length) FROM packets WHERE (1 IS NULL OR session_id = 1);
+-- SCAN packets
+EXPLAIN QUERY PLAN SELECT COUNT(*), SUM(length) FROM packets WHERE session_id = 1;
+-- SEARCH packets USING INDEX idx_packets_session (session_id=?)
+```
+
+No volume deste projeto, o efeito no tempo de resposta é desprezível. Se o banco crescer muito, a alternativa é ter uma versão de cada consulta com `WHERE session_id = ?`.
+
+## Consultar o banco manualmente
+
+`data/traffic.db` pode ser aberto com qualquer cliente SQLite, como o `sqlite3` ou o DB Browser for SQLite. Abra em modo somente leitura enquanto houver uma captura em andamento.

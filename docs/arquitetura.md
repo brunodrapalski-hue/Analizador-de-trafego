@@ -1,62 +1,35 @@
 # Arquitetura
 
-## Visão geral
+A aplicação é uma CLI em Python executada em Docker. Ela recebe pacotes de uma interface de rede (`sniff`) ou de um arquivo `.pcap` (`PcapReader`). As duas fontes entregam cada pacote ao mesmo `PacketCollector`, e a partir dele o processamento é idêntico: normalização, gravação em lote no SQLite e estatísticas calculadas por SQL.
 
-A aplicação é uma ferramenta de linha de comando empacotada em Docker. Ela recebe pacotes de duas fontes possíveis — uma interface de rede ou um arquivo `.pcap` — e processa ambas pelo **mesmo pipeline**: normalização, gravação em lote no SQLite e cálculo de estatísticas via SQL.
-
-```mermaid
-flowchart TB
-    U([Usuário]) -->|docker compose run| CLI
-
-    subgraph Container["Container traffic-analyzer:1.0.0"]
-        CLI[cli.py<br/>comandos capture, stats, sessions]
-        CAP[capture.py<br/>PacketCollector]
-        PAR[parser.py<br/>parse_packet]
-        STO[storage.py<br/>Storage]
-        STA[stats.py<br/>compute_stats]
-        REP[report.py<br/>tabelas rich]
-        CLI --> CAP --> PAR
-        CAP --> STO
-        CLI --> STA --> REP
-    end
-
-    NIC[Interface de rede<br/>eth0] -->|Scapy sniff| CAP
-    PCAP[samples/*.pcap<br/>volume somente leitura] -->|PcapReader| CAP
-    STO --> DB[(data/traffic.db<br/>volume persistente)]
-    STA -->|consultas SQL| DB
-```
-
-## Responsabilidade de cada módulo
+## Módulos
 
 | Módulo | Responsabilidade | Não faz |
 |---|---|---|
-| `cli.py` | Interpreta comandos e argumentos, trata erros e define o código de saída | Não acessa pacotes nem SQL diretamente |
-| `capture.py` | Obtém pacotes (ao vivo ou arquivo), aplica o lote e fecha a sessão | Não conhece o formato do banco |
-| `parser.py` | Converte um pacote Scapy em `PacketRecord` imutável ou o descarta | Não grava nada |
-| `storage.py` | Cria o schema, registra sessões e insere pacotes em transações | Não calcula estatísticas |
-| `stats.py` | Calcula as estatísticas com consultas SQL parametrizadas | Não formata saída |
-| `report.py` | Exibe estatísticas e sessões em tabelas | Não consulta o banco |
-| `config.py` | Centraliza configurações com valores padrão e variáveis de ambiente | — |
-
-A separação permite testar cada parte isoladamente e reduzir o impacto de mudanças. Uma troca de SQLite por PostgreSQL exigiria adaptar `storage.py` e as consultas SQL em `stats.py`; uma mudança de apresentação, como terminal → JSON, ficaria concentrada em `report.py`.
+| `cli.py` | Interpreta comandos e opções, valida combinações, trata erros e define o código de saída | Não interpreta pacotes nem escreve SQL |
+| `config.py` | Lê `TRAFFIC_DB_PATH` e `TRAFFIC_BATCH_SIZE` (com validação) | — |
+| `capture.py` | Obtém os pacotes (ao vivo ou de arquivo) e, via `PacketCollector`, acumula, grava em lotes e fecha a sessão | Não conhece o schema |
+| `parser.py` | Converte um pacote Scapy em `PacketRecord` imutável, ou retorna `None` se não for IP | Não grava nada |
+| `storage.py` | Cria o schema, registra sessões e insere lotes em transações | Não calcula estatísticas |
+| `stats.py` | Calcula totais, protocolos e rankings com consultas SQL parametrizadas | Não formata a saída |
+| `report.py` | Exibe estatísticas e sessões em tabelas (`rich`) | Não acessa o banco |
 
 ## Fluxo de um pacote
 
 ```mermaid
 flowchart TD
-    A[Pacote recebido] --> B{Tem camada IPv4?}
-    B -- sim --> D[versão 4, protocolo = campo proto]
-    B -- não --> C{Tem camada IPv6?}
-    C -- sim --> E[versão 6, protocolo = campo nh]
-    C -- não --> F[Descartado e contado<br/>packets_ignored + 1]
-    D --> G[Classifica: 6=TCP, 17=UDP,<br/>1=ICMP, 58=ICMPv6, outros=OTHER]
-    E --> G
-    G --> H[PacketRecord: horário UTC, IPs,<br/>protocolo, tamanho do frame]
-    H --> I[Buffer]
-    I --> J{Buffer >= 100?}
-    J -- sim --> K[INSERT em lote<br/>uma transação]
-    J -- não --> L[Aguarda próximo pacote]
+    SRC["sniff (interface) ou PcapReader (.pcap)"] --> H["PacketCollector.handle"]
+    H --> P{"parse_packet:<br/>tem IPv4 ou IPv6?"}
+    P -- não --> IGN["packets_ignored + 1"]
+    P -- sim --> REC["PacketRecord<br/>horário UTC, versão, IPs,<br/>protocolo, tamanho do frame"]
+    REC --> BUF["buffer"]
+    BUF --> FULL{"buffer >= TRAFFIC_BATCH_SIZE<br/>(padrão 100)?"}
+    FULL -- sim --> INS["storage.insert_packets<br/>1 transação por lote"]
+    FULL -- não --> SRC
 ```
+
+- **Protocolo:** vem do campo `proto` (IPv4) ou `nh` (IPv6): 6 = TCP, 17 = UDP, 1 = ICMP, 58 = ICMPv6, e qualquer outro valor = `OTHER`.
+- **Tamanho:** é o do frame completo. Em arquivos `.pcap`, usa `wirelen`, o tamanho original mesmo se a captura foi truncada.
 
 ## Sequência de uma captura
 
@@ -65,66 +38,48 @@ sequenceDiagram
     actor U as Usuário
     participant CLI as cli.py
     participant CAP as capture.py
-    participant PRS as parser.py
     participant STO as storage.py
-    participant DB as SQLite
     participant STA as stats.py
 
-    U->>CLI: capture --iface eth0 --count 100
-    CLI->>STO: abre banco (cria schema se necessário)
+    U->>CLI: capture --iface eth0 --duration 30
+    CLI->>CLI: valida as opções
+    CLI->>STO: abre o banco (cria o schema se necessário)
+    CLI->>CLI: lê e valida TRAFFIC_BATCH_SIZE
     CLI->>CAP: capture_live()
-    CAP->>CAP: valida interface
+    CAP->>CAP: valida a interface
     CAP->>STO: start_session()
-    STO->>DB: INSERT capture_sessions
     loop cada pacote
-        CAP->>PRS: parse_packet()
-        PRS-->>CAP: PacketRecord ou None
-        opt buffer cheio (100)
-            CAP->>STO: insert_packets(lote)
-            STO->>DB: INSERT ... (transação)
+        CAP->>CAP: parse_packet() + buffer
+        opt lote completo
+            CAP->>STO: insert_packets()
         end
     end
-    Note over CAP: fim por count, duration ou Ctrl+C
+    Note over CAP: fim por --count, --duration ou Ctrl+C
     CAP->>STO: insert_packets(restante) + finish_session()
-    STO->>DB: UPDATE capture_sessions
     CLI->>STA: compute_stats(sessão)
-    STA->>DB: SELECT ... GROUP BY / ORDER BY / LIMIT 5
-    STA-->>CLI: TrafficStats
-    CLI-->>U: tabelas de estatísticas
+    CLI-->>U: tabelas no terminal
 ```
 
-## Implantação
+## Encerramento da captura
 
-```mermaid
-flowchart TB
-    subgraph Windows["Windows 11"]
-        subgraph WSL["WSL2 — Ubuntu 24.04"]
-            subgraph Docker["Docker Engine"]
-                C["Container analyzer<br/>network_mode: host<br/>cap_add: NET_RAW"]
-            end
-            NIC[eth0 do WSL]
-            V1[./data]
-            V2[./samples]
-        end
-    end
-    C ---|captura| NIC
-    C ---|volume leitura/escrita| V1
-    C ---|volume somente leitura| V2
-```
+- **Fim normal:** o `sniff` do Scapy retorna quando atinge `--count`, `--duration` ou recebe Ctrl+C. O Scapy trata o Ctrl+C internamente.
+- **Gravação garantida:** em seguida, o `finally` de `capture_live` chama `PacketCollector.finish()`, que grava o lote pendente e registra o fim e os contadores da sessão. O mesmo `finally` existe em `read_pcap`.
+- **Validações antes da sessão:** interface inexistente, arquivo ausente, `TRAFFIC_BATCH_SIZE` inválido e opções ao vivo usadas com `--pcap` são rejeitados antes de a sessão ser criada.
+- **Erros depois da sessão:** um filtro BPF inválido, ou um arquivo que não é pcap, gera erro depois que a sessão foi criada. A sessão fica registrada com 0 pacotes.
 
-| Item | Configuração | Motivo |
-|---|---|---|
-| Rede | `network_mode: host` | O container enxerga as interfaces reais do host para capturar |
-| Privilégios | `cap_add: NET_RAW` | Capacidade necessária para sockets brutos; sem `NET_ADMIN` e sem `privileged` |
-| Dados | `./data:/app/data` | O banco persiste entre execuções |
-| Amostras | `./samples:/app/samples:ro` | Leitura de `.pcap` sem permissão de escrita |
-
-## Imagens Docker (multi-stage)
+## Execução em Docker
 
 | Estágio | Imagem | Conteúdo | Uso |
 |---|---|---|---|
-| `base` | — | Python 3.13 slim, tcpdump/libpcap, scapy, rich, código | Base comum |
-| `test` | `traffic-analyzer-tests:1.0.0` | base + pytest, ruff, bandit, pip-audit, testes, amostra | Testes e portão de qualidade |
-| `runtime` | `traffic-analyzer:1.0.0` | base **sem o pip** | Execução da aplicação |
+| `base` | — | `python:3.13-slim`, tcpdump (fornece a libpcap para os filtros BPF), scapy, rich, `app/` | Base comum |
+| `test` | `traffic-analyzer-tests:1.0.0` | base + ferramentas de qualidade, `tests/`, `samples/`, `scripts/` | Serviços `tests` e `quality` |
+| `runtime` | `traffic-analyzer:1.0.0` | base sem o pip | Serviço `analyzer` |
 
-A imagem de execução não contém ferramentas de teste nem o instalador de pacotes, reduzindo a superfície de ataque (ver [seguranca.md](seguranca.md)).
+| Configuração (`docker-compose.yml`) | Motivo |
+|---|---|
+| `network_mode: host` | O container enxerga as interfaces do host. Sem isso, veria apenas a própria interface virtual. |
+| `cap_add: [NET_RAW]` | Declara explicitamente a capability de socket bruto usada na captura. Sem `privileged`, sem `NET_ADMIN`. |
+| `./data:/app/data` | O banco persiste entre execuções (`docker compose run --rm` remove só o container). |
+| `./samples:/app/samples:ro` | Os arquivos `.pcap` são lidos sem permissão de escrita. |
+
+As justificativas estão em [decisoes.md](decisoes.md).

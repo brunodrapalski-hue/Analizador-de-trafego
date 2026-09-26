@@ -1,117 +1,114 @@
 # Decisões técnicas
 
-Cada decisão registra o contexto, a escolha, a justificativa e o custo aceito (formato inspirado em *Architecture Decision Records*).
+Cada decisão registra a escolha, o motivo e o custo aceito.
 
 | ID | Tema | Decisão |
 |---|---|---|
-| D1 | Ambiente | Linux (WSL2) + Docker Engine |
-| D2 | Linguagem e versões | Python 3.13, Scapy 2.7.0 |
-| D3 | Fontes de pacotes | Captura ao vivo **e** leitura de `.pcap` |
-| D4 | Rede e privilégios do container | `network_mode: host` + `NET_RAW` |
-| D5 | Banco de dados | SQLite em volume |
-| D6 | Escopo de pacotes | IPv4 e IPv6; não-IP descartado e contado |
-| D7 | Classificação de protocolo | Pelo número de protocolo do cabeçalho IP |
-| D8 | Tamanho do pacote | Tamanho do frame completo |
-| D9 | "Mais tráfego" | Top 5 por pacotes **e** por bytes |
-| D10 | Privacidade | Somente metadados |
-| D11 | Gravação | Em lotes, com gravação garantida ao encerrar |
-| D12 | Interface | Linha de comando com tabelas |
+| D1 | Ambiente | Linux (ou WSL2) com Docker |
+| D2 | Versões | Python 3.13 e Scapy 2.7.0 |
+| D3 | Fontes de pacotes | Captura ao vivo e leitura de `.pcap` |
+| D4 | Rede e privilégios | `network_mode: host`, `NET_RAW` declarada, root |
+| D5 | Banco | SQLite em volume |
+| D6 | Escopo | IPv4 e IPv6; não-IP descartado e contado |
+| D7 | Protocolo | Número do protocolo no cabeçalho IP |
+| D8 | Tamanho | Frame completo |
+| D9 | "Mais tráfego" | Top 5 por pacotes e por bytes |
+| D10 | Dados gravados | Somente metadados |
+| D11 | Gravação | Em lotes, com gravação do restante no encerramento |
+| D12 | Interface | CLI com tabelas no terminal |
+| D13 | Verificações | Quality gate e scan da imagem no CI |
 
 ---
 
-### D1 — Linux (WSL2) + Docker Engine
+### D1 — Linux (ou WSL2) com Docker
 
-- **Contexto:** a captura exige acesso às interfaces de rede. No Windows, o Docker Desktop executa os containers em uma VM e não enxerga as placas físicas; o modo `host` tem limitações conhecidas nesse ambiente.
-- **Decisão:** desenvolver e executar em Ubuntu (WSL2) com Docker Engine nativo.
-- **Justificativa:** comportamento real de Linux, igual ao de um servidor; sem licenças comerciais.
-- **Custo aceito:** no WSL2 a captura ocorre na interface virtual `eth0` do WSL, não na placa física do Windows.
+- **Decisão:** executar em Linux; no Windows, dentro do WSL2.
+- **Por quê:** a captura precisa das interfaces de rede do host. No Docker Desktop, os containers rodam em uma VM e não enxergam as placas físicas.
+- **Custo:** no WSL2, a captura ocorre na interface virtual do WSL (normalmente `eth0`). Ela recebe o tráfego gerado no próprio WSL, não o de todo o Windows.
 
 ### D2 — Python 3.13 e Scapy 2.7.0
 
-- **Contexto:** Python é a linguagem preferencial indicada nos requisitos, e Scapy é uma das bibliotecas sugeridas para captura. Havia versões mais novas do Python disponíveis.
-- **Decisão:** Python 3.13 (imagem `python:3.13-slim`) com Scapy 2.7.0.
-- **Justificativa:** as versões foram escolhidas pela **matriz de suporte oficial**: 3.13 é a versão mais recente declarada como suportada pelo Scapy. As dependências Python têm versões fixadas para reduzir variações entre builds.
-- **Custo aceito:** não usar a versão mais recente do Python até que o Scapy declare suporte.
+- **Decisão:** imagem `python:3.13-slim` e dependências com versão fixada em `requirements*.txt`.
+- **Por quê:** Python é a linguagem preferencial do desafio e Scapy é a biblioteca sugerida. A versão 3.13 é a mais recente que o Scapy 2.7.0 declara como suportada.
+- **Custo:** não usar a versão mais recente do Python.
 
 ### D3 — Captura ao vivo e leitura de `.pcap`
 
-- **Contexto:** a captura ao vivo depende das interfaces e do tráfego disponíveis no ambiente de execução, o que pode dificultar uma validação reproduzível.
-- **Decisão:** oferecer `--iface` (requisito) e `--pcap` (reprodutibilidade), ambos pelo mesmo `PacketCollector`.
-- **Justificativa:** o modo `.pcap` fornece uma entrada determinística para testes e reprodução de cenários. Tanto a captura ao vivo quanto a leitura de arquivo alimentam o mesmo `PacketCollector`, compartilhando parser, persistência e estatísticas.
-- **Custo aceito:** nenhum relevante.
+- **Decisão:** `capture --iface` (o requisito) e `capture --pcap`. As duas fontes alimentam o mesmo `PacketCollector`.
+- **Por quê:** o tráfego ao vivo muda a cada execução. Um `.pcap` é uma entrada fixa: os resultados podem ser conferidos no Wireshark e usados em testes. Como parser, persistência e estatísticas são os mesmos, validar com o arquivo também valida o processamento da captura ao vivo.
+- **Custo:** `--count`, `--duration` e `--filter` valem só para a captura ao vivo. Com `--pcap`, são recusados com erro.
 
-### D4 — `network_mode: host` + privilégios de captura
+### D4 — Rede do host e privilégios do container
 
-- **Contexto:** capturar exige sockets brutos; a forma mais simples seria `privileged: true`.
-- **Decisão:** utilizar `network_mode: host`, sem `privileged` e sem adicionar `NET_ADMIN`; `NET_RAW` é declarada explicitamente para a captura de pacotes.
-- **Justificativa:** evita `privileged` e `NET_ADMIN`; o container mantém o conjunto padrão de capabilities do Docker, com `NET_RAW` declarada explicitamente para deixar clara a necessidade da captura.
-- **Custo aceito:** o container compartilha a pilha de rede do host (necessário para capturar) e executa como root dentro do container (ver [seguranca.md](seguranca.md)).
+- **Decisão:**
+  - `network_mode: host`;
+  - `cap_add: NET_RAW`, declarada explicitamente;
+  - sem `privileged`;
+  - sem `NET_ADMIN`;
+  - o processo roda como root dentro do container.
+- **Por quê:** sem a rede do host, o container só vê a própria interface virtual. Capturar exige socket bruto (`NET_RAW`, que já faz parte do conjunto padrão do Docker; declarar deixa a necessidade explícita). `NET_ADMIN` não é necessário: a captura com filtro BPF funciona sem ele.
+- **Custo:**
+  - O container mantém o conjunto padrão de capabilities do Docker, e não apenas `NET_RAW`.
+  - Ele compartilha a pilha de rede do host, embora não abra portas nem escute conexões.
+  - Roda como root.
+- **Evolução possível:** `cap_drop: [ALL]` com `cap_add: [NET_RAW]` e um usuário não-root com *file capabilities* no interpretador. Isso exige testar as permissões do volume `./data`.
 
 ### D5 — SQLite em volume
 
-- **Contexto:** o requisito exige persistência em banco de dados, sem impor uma tecnologia específica.
-- **Decisão:** SQLite (biblioteca padrão), arquivo em `./data`.
-- **Justificativa:** não exige serviço adicional de banco e oferece SQL completo, transações e integridade referencial. Detalhes em [banco-de-dados.md](banco-de-dados.md).
-- **Custo aceito:** um processo gravando por vez; evolução para PostgreSQL documentada.
+- **Decisão:** SQLite (biblioteca padrão do Python), arquivo `data/traffic.db` em volume.
+- **Por quê:** não exige serviço de banco, usuário nem senha, e oferece SQL, transações e chaves estrangeiras. Detalhes em [banco-de-dados.md](banco-de-dados.md).
+- **Custo:** um processo gravando por vez. Para vários sensores simultâneos, PostgreSQL seria a evolução, com adaptação de `storage.py` e `stats.py`.
 
 ### D6 — IPv4 e IPv6; não-IP descartado e contado
 
-- **Contexto:** pacotes como ARP não têm endereço IP, protocolo IP nem os campos exigidos.
-- **Decisão:** armazenar apenas IPv4 e IPv6; descartar os demais e registrar a quantidade em `packets_ignored`.
-- **Justificativa:** comportamento definido e auditável — nenhum pacote some sem registro. Na amostra: 300 pacotes = 284 IP + 16 não-IP.
-- **Custo aceito:** estatísticas não incluem tráfego de camada 2.
+- **Decisão:** gravar apenas pacotes IPv4 e IPv6. Os demais frames (ex.: ARP) são contados em `packets_ignored`.
+- **Por quê:** frames sem IP não têm os campos pedidos, mas continuam aparecendo no total capturado. Na amostra, são 300 frames = 284 IP + 16 não-IP.
+- **Custo:** as estatísticas não detalham o tráfego de camada 2.
 
 ### D7 — Protocolo pelo número IP
 
-- **Contexto:** é preciso um critério único e verificável para "protocolo".
-- **Decisão:** usar o campo `proto` (IPv4) ou `nh` (IPv6): 6 = TCP, 17 = UDP, 1 = ICMP, 58 = ICMPv6, demais = `OTHER`. O número original é gravado em `protocol_num`.
-- **Justificativa:** padrão IANA, determinístico e simples de conferir no Wireshark.
-- **Custo aceito:** IPv6 com cabeçalhos de extensão é classificado pelo primeiro cabeçalho.
+- **Decisão:** usar o campo `proto` (IPv4) ou `nh` (IPv6): 6 = TCP, 17 = UDP, 1 = ICMP, 58 = ICMPv6, e os demais = `OTHER`. O número original fica em `protocol_num`.
+- **Por quê:** é um critério único e fácil de conferir no Wireshark.
+- **Custo:** IPv6 com cabeçalho de extensão é classificado pelo primeiro cabeçalho. Por exemplo, Hop-by-Hop aparece como `OTHER`.
 
 ### D8 — Tamanho do frame completo
 
-- **Contexto:** "tamanho do pacote" pode ser o frame inteiro ou apenas o datagrama IP.
-- **Decisão:** bytes do frame completo — `len(pacote)` na captura ao vivo e o tamanho original (`wirelen`) em arquivos `.pcap`, mesmo se a captura foi truncada.
-- **Justificativa:** mesmo critério da coluna *Length* do Wireshark, permitindo validação independente.
-- **Custo aceito:** inclui o cabeçalho de enlace (14 bytes em Ethernet).
+- **Decisão:** registrar os bytes do frame completo: `len(pacote)` ao vivo e `wirelen` (tamanho original) em `.pcap`.
+- **Por quê:** é o mesmo valor da coluna *Length* do Wireshark, o que permite validar de forma independente.
+- **Custo:** o tamanho inclui o cabeçalho de enlace (14 bytes em Ethernet). Com offload de segmentação (GRO na recepção, TSO/GSO no envio), a captura vê segmentos TCP agregados, maiores que o MTU. Na amostra, 37 frames TCP passam de 1.514 bytes, e o maior tem 64.146 bytes. É o mesmo valor que o Wireshark mostra.
 
 ### D9 — Top 5 por pacotes e por bytes
 
-- **Contexto:** "IPs com mais tráfego" é ambíguo.
-- **Decisão:** exibir os dois rankings para origem e destino.
-- **Justificativa:** um IP pode enviar muitos pacotes pequenos e outro poucos pacotes grandes. Na amostra, `4.228.31.150` é o 2º por pacotes (41) e o 1º por bytes (589.329) — um download típico.
-- **Custo aceito:** quatro tabelas em vez de duas.
+- **Decisão:** exibir, para origem e para destino, um ranking por quantidade de pacotes e outro por bytes. Empates são desfeitos pela outra métrica e depois pelo IP.
+- **Por quê:** "mais tráfego" é ambíguo. Na amostra, `4.228.31.150` é o 2º em pacotes (41) e o 1º em bytes (589.329), o perfil de um download.
+- **Custo:** quatro tabelas em vez de duas.
 
 ### D10 — Somente metadados
 
-- **Contexto:** o conteúdo dos pacotes pode conter dados pessoais ou sensíveis e não é necessário para as estatísticas.
-- **Decisão:** gravar apenas horário, versão IP, IPs, protocolo e tamanho.
-- **Justificativa:** minimização de dados (LGPD, art. 6º, III) e menor impacto em caso de vazamento do banco.
-- **Custo aceito:** não é possível inspecionar conteúdo depois da captura (fora do escopo).
+- **Decisão:** gravar horário, versão IP, IPs, protocolo e tamanho. O payload não é lido para armazenamento nem gravado.
+- **Por quê:** as estatísticas não precisam do conteúdo, e isso reduz a exposição caso o banco seja compartilhado. Endereços IP ainda podem identificar pessoas: a captura deve ser feita só em redes autorizadas, e o banco não é versionado (`.gitignore`).
+- **Custo:** não é possível inspecionar o conteúdo depois da captura.
 
-### D11 — Gravação em lote
+### D11 — Gravação em lotes
 
-- **Contexto:** gravar um pacote por transação é lento sob tráfego intenso.
-- **Decisão:** acumular registros e gravar a cada 100 (`TRAFFIC_BATCH_SIZE`) em uma transação; o restante é gravado no encerramento, inclusive com Ctrl+C (`finally`).
-- **Justificativa:** desempenho com atomicidade por lote e sem perda de dados na interrupção.
-- **Custo aceito:** em caso de falha abrupta do processo (ex.: `kill -9`), até 99 pacotes em memória podem ser perdidos.
+- **Decisão:** acumular registros e gravar a cada `TRAFFIC_BATCH_SIZE` (padrão 100) em uma transação. O restante é gravado no encerramento, no `finally` da captura.
+- **Por quê:** uma transação por pacote é lenta sob tráfego intenso. Por lote, a gravação é atômica.
+- **Custo:** no fim por `--count`, `--duration` ou Ctrl+C, nada se perde. Se o processo for morto por sinal (ex.: `kill`, `kill -9` ou `docker stop`), o lote em memória (até 99 pacotes, com o padrão) se perde e a sessão fica sem horário de término.
 
-### D12 — Linha de comando com tabelas
+### D12 — CLI com tabelas
 
-- **Contexto:** a solução precisa apresentar as estatísticas de forma clara e direta; uma interface web aumentaria a complexidade sem necessidade para este cenário.
-- **Decisão:** CLI com `argparse` (biblioteca padrão) e tabelas com `rich`; cálculo (`stats.py`) separado da apresentação (`report.py`).
-- **Justificativa:** simples de executar em Docker, legível e fácil de estender para outros formatos (JSON, web) sem alterar o cálculo.
-- **Custo aceito:** sem visualização gráfica.
+- **Decisão:** `argparse` (biblioteca padrão) e tabelas com `rich`. O cálculo (`stats.py`) fica separado da apresentação (`report.py`).
+- **Por quê:** simples de executar em Docker e legível no terminal. Uma interface web aumentaria o escopo sem necessidade.
+- **Custo:** sem visualização gráfica.
 
----
+### D13 — Quality gate e scan da imagem
 
-## Decisões de engenharia complementares
-
-| Tema | Decisão | Justificativa |
-|---|---|---|
-| Dockerfile multi-stage | Estágios `test` e `runtime` a partir de uma base comum | Ferramentas de teste não entram na imagem de execução |
-| Remoção do pip na imagem final | `pip uninstall` no estágio `runtime` | Corrige 2 vulnerabilidades encontradas pelo Trivy e reduz a superfície de ataque |
-| Testes com pacotes sintéticos + amostra real | Pacotes montados com Scapy e validação com `demo.pcap` | Casos isolados e determinísticos + validação do conjunto contra números conferidos |
-| Horário em UTC | `datetime` com fuso UTC | Correlação de eventos sem ambiguidade |
-| Código em inglês, documentação em português | Padrão da indústria para código; documentação para o público do processo | Consistência |
-| Conventional Commits | `feat:`, `fix:`, `test:`, `docs:`, `ci:` | Histórico legível e rastreável |
+- **Decisão:**
+  - `scripts/check.sh` executa ruff (lint e formatação), pytest, bandit e pip-audit, o mesmo script localmente e no CI.
+  - O CI também faz o build da imagem de execução e a analisa com Trivy.
+- **Por quê:** a mesma verificação roda em qualquer máquina. No CI, as actions são fixadas por SHA e o workflow tem permissão apenas de leitura.
+- **Política do Trivy:** um relatório com HIGH e CRITICAL, só para visibilidade, e um gate que falha o build apenas com CRITICAL **com correção disponível**. Bloquear por achados sem correção impediria a entrega sem reduzir o risco.
+- **Resultado:**
+  - O primeiro scan apontou 2 HIGH corrigíveis (`msgpack` e `setuptools`), ambos embutidos no pip. O pip só é necessário no build e foi removido da imagem de execução ([antes](security/trivy-report-before-fix.txt), [depois](security/trivy-report.txt)).
+  - Restam 45 HIGH em pacotes do Debian da imagem base, sem correção publicada, e 0 CRITICAL. A imagem não está livre de vulnerabilidades. Esses achados são acompanhados a cada execução do CI e somem ao atualizar a imagem base quando houver correção.
+- **Custo:** a imagem base não é fixada por digest, então a contagem do Trivy pode mudar ao longo do tempo.

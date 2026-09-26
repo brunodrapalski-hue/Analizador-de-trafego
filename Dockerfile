@@ -33,7 +33,7 @@ COPY scripts/ ./scripts/
 ENTRYPOINT ["python", "-m", "pytest", "-v"]
 
 # Estágio de execução (padrão). pip só é usado no build e é removido da
-# imagem final (ver docs/seguranca.md).
+# imagem final (ver D13 em docs/decisoes.md).
 FROM base AS runtime
 RUN pip uninstall -y pip
 ENTRYPOINT ["python", "-m", "app"]

@@ -67,7 +67,7 @@ def test_length_is_full_frame_size():
 
 @pytest.mark.skipif(not SAMPLE_PCAP.exists(), reason="samples/demo.pcap not found")
 def test_demo_pcap_matches_reference_numbers():
-    """A amostra real produz os números de referência (docs/rastreabilidade.md)."""
+    """A amostra real produz os números de referência (docs/validacao.md)."""
     packets = rdpcap(str(SAMPLE_PCAP))
     records = [parse_packet(p) for p in packets]
     ip_records = [r for r in records if r is not None]

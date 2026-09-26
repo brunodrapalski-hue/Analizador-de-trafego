@@ -39,7 +39,7 @@ jobs:
           exit-code: "0"
 
       # Portão: o build falha somente se houver vulnerabilidade CRITICAL com
-      # correção disponível (ou seja, acionável). Ver docs/seguranca.md.
+      # correção disponível (ou seja, acionável). Ver D13 em docs/decisoes.md.
       - name: Image scan gate (fixable CRITICAL fails the build)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:

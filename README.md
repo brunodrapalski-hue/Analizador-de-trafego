@@ -7,6 +7,10 @@ Aplicação em Python, executada em Docker.
 
 Uma aplicação para a análise de tráfego com a responsabilidade de capturar pacotes de uma interface de rede e exibir estatísticas básicas.
 
+## Por onde começar
+
+Passo a passo para preparar o ambiente, executar a aplicação e conferir o resultado de cada comando. Siga as etapas no documento a seguir: **[guia de execução e validação](docs/validacao.md)**.
+
 ## Atendimento aos requisitos
 
 | Requisito | Como foi atendido |
@@ -35,10 +39,6 @@ flowchart LR
 - **Frames não-IP:** frames sem IP (ex.: ARP) não são armazenados, mas entram no total capturado.
 - **Gravação:** em lotes (padrão: 100 pacotes por transação). Cada captura gera uma sessão no banco.
 - **Payload:** o conteúdo dos pacotes não é gravado.
-
-## Por onde começar
-
-Passo a passo para preparar o ambiente, executar a aplicação e conferir o resultado de cada comando. Siga as etapas no documento a seguir: **[guia de execução e validação](docs/validacao.md)**.
 
 ## Resultado de referência — `samples/demo.pcap`
 

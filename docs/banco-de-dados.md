@@ -2,13 +2,13 @@
 
 ## Escolha: SQLite
 
-O desafio pede o armazenamento em "um banco de dados". O SQLite foi escolhido porque:
+A solução precisa persistir os pacotes capturados em um banco de dados. O SQLite foi escolhido porque:
 
-- é um arquivo único, sem servidor, senha ou container adicional — o avaliador executa com um comando;
+- é um arquivo único, sem servidor, senha ou serviço adicional de banco, reduzindo a configuração necessária para executar a aplicação;
 - oferece SQL completo, transações ACID, chaves estrangeiras e restrições `CHECK`;
 - atende ao cenário de uma ferramenta de análise local com um único processo gravando.
 
-**Evolução prevista:** para vários sensores capturando ao mesmo tempo ou acesso remoto concorrente, o caminho é PostgreSQL. Toda a persistência está isolada em `app/storage.py`, então a troca não afeta captura nem estatísticas.
+**Evolução prevista:** para vários sensores capturando ao mesmo tempo ou acesso remoto concorrente, PostgreSQL é uma evolução possível. A troca exigiria adaptar a persistência em `app/storage.py` e as consultas SQL em `app/stats.py`; o fluxo de captura poderia permanecer o mesmo.
 
 ## Diagrama ER
 

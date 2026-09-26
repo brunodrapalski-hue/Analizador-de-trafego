@@ -6,7 +6,7 @@ A aplicação é uma ferramenta de linha de comando empacotada em Docker. Ela re
 
 ```mermaid
 flowchart TB
-    U([Usuário / Avaliador]) -->|docker compose run| CLI
+    U([Usuário]) -->|docker compose run| CLI
 
     subgraph Container["Container traffic-analyzer:1.0.0"]
         CLI[cli.py<br/>comandos capture, stats, sessions]
@@ -38,7 +38,7 @@ flowchart TB
 | `report.py` | Exibe estatísticas e sessões em tabelas | Não consulta o banco |
 | `config.py` | Centraliza configurações com valores padrão e variáveis de ambiente | — |
 
-A separação permite testar cada parte isoladamente e trocar uma camada sem afetar as demais (ex.: SQLite → PostgreSQL em `storage.py`, terminal → JSON em `report.py`).
+A separação permite testar cada parte isoladamente e reduzir o impacto de mudanças. Uma troca de SQLite por PostgreSQL exigiria adaptar `storage.py` e as consultas SQL em `stats.py`; uma mudança de apresentação, como terminal → JSON, ficaria concentrada em `report.py`.
 
 ## Fluxo de um pacote
 

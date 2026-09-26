@@ -17,7 +17,7 @@ A rastreabilidade completa (requisito → código → teste → evidência) est�
 
 ---
 
-## Como avaliar em 5 minutos
+## Execução rápida
 
 Pré-requisito único: **Docker com Docker Compose em Linux** (ou WSL2 no Windows). Não é necessário instalar Python.
 
@@ -26,11 +26,12 @@ git clone https://github.com/brunodrapalski-hue/Analizador-de-trafego.git
 cd Analizador-de-trafego
 docker compose build
 
-# 1. Análise do arquivo de amostra incluído (funciona em qualquer máquina)
+# 1. Análise do arquivo de amostra incluído
 docker compose run --rm analyzer capture --pcap samples/demo.pcap
 
-# 2. Captura ao vivo: 100 frames da interface eth0 (IP ou não-IP)
-docker compose run --rm analyzer capture --iface eth0 --count 100
+# 2. Captura ao vivo: 30 segundos da interface eth0 (IP ou não-IP)
+# Substitua eth0 pela interface disponível no ambiente, se necessário.
+docker compose run --rm analyzer capture --iface eth0 --duration 30
 ```
 
 Resultado esperado para a amostra `samples/demo.pcap` (300 pacotes):
@@ -175,5 +176,5 @@ Tudo roda automaticamente no GitHub Actions a cada push. Controles de segurança
 ## Limitações conhecidas
 
 - IPv6 com cabeçalhos de extensão é classificado pelo primeiro cabeçalho (ex.: Hop-by-Hop aparece como `OTHER`).
-- SQLite atende a um capturador por vez; para múltiplos sensores simultâneos, a evolução natural é PostgreSQL (a camada `storage.py` é isolada para facilitar a troca).
-- O container executa como root, pois a captura exige sockets brutos; o privilégio é limitado à capacidade `NET_RAW` (ver [docs/seguranca.md](docs/seguranca.md)).
+- SQLite atende bem ao cenário local de um capturador por vez; para múltiplos sensores simultâneos, PostgreSQL é uma evolução possível. Essa mudança exigiria adaptar a persistência em `storage.py` e as consultas SQL em `stats.py`.
+- O container executa como root e não utiliza `privileged` nem adiciona `NET_ADMIN`. A capability `NET_RAW` é declarada explicitamente no Docker Compose para a captura de pacotes (ver [docs/seguranca.md](docs/seguranca.md)).

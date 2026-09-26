@@ -28,30 +28,30 @@ Cada decisão registra o contexto, a escolha, a justificativa e o custo aceito (
 
 ### D2 — Python 3.13 e Scapy 2.7.0
 
-- **Contexto:** o desafio prefere Python e sugere Scapy. Havia versões mais novas do Python disponíveis.
+- **Contexto:** Python é a linguagem preferencial indicada nos requisitos, e Scapy é uma das bibliotecas sugeridas para captura. Havia versões mais novas do Python disponíveis.
 - **Decisão:** Python 3.13 (imagem `python:3.13-slim`) com Scapy 2.7.0.
-- **Justificativa:** as versões foram escolhidas pela **matriz de suporte oficial**: 3.13 é a versão mais recente declarada como suportada pelo Scapy. Dependências com versão fixada garantem builds reproduzíveis.
+- **Justificativa:** as versões foram escolhidas pela **matriz de suporte oficial**: 3.13 é a versão mais recente declarada como suportada pelo Scapy. As dependências Python têm versões fixadas para reduzir variações entre builds.
 - **Custo aceito:** não usar a versão mais recente do Python até que o Scapy declare suporte.
 
 ### D3 — Captura ao vivo e leitura de `.pcap`
 
-- **Contexto:** o avaliador pode executar em um ambiente onde a captura ao vivo não é possível ou não gera tráfego representativo.
+- **Contexto:** a captura ao vivo depende das interfaces e do tráfego disponíveis no ambiente de execução, o que pode dificultar uma validação reproduzível.
 - **Decisão:** oferecer `--iface` (requisito) e `--pcap` (reprodutibilidade), ambos pelo mesmo `PacketCollector`.
-- **Justificativa:** a demonstração funciona em qualquer máquina e os resultados são determinísticos — o que é validado com o `.pcap` vale para a captura ao vivo, pois o código é o mesmo.
+- **Justificativa:** o modo `.pcap` fornece uma entrada determinística para testes e reprodução de cenários. Tanto a captura ao vivo quanto a leitura de arquivo alimentam o mesmo `PacketCollector`, compartilhando parser, persistência e estatísticas.
 - **Custo aceito:** nenhum relevante.
 
-### D4 — `network_mode: host` + capacidades mínimas
+### D4 — `network_mode: host` + privilégios de captura
 
 - **Contexto:** capturar exige sockets brutos; a forma mais simples seria `privileged: true`.
-- **Decisão:** rede do host e apenas a capacidade `NET_RAW`, necessária para abrir sockets brutos e realizar a captura.
-- **Justificativa:** princípio do menor privilégio — o container não recebe acesso a dispositivos nem às demais capacidades administrativas.
+- **Decisão:** utilizar `network_mode: host`, sem `privileged` e sem adicionar `NET_ADMIN`; `NET_RAW` é declarada explicitamente para a captura de pacotes.
+- **Justificativa:** evita `privileged` e `NET_ADMIN`; o container mantém o conjunto padrão de capabilities do Docker, com `NET_RAW` declarada explicitamente para deixar clara a necessidade da captura.
 - **Custo aceito:** o container compartilha a pilha de rede do host (necessário para capturar) e executa como root dentro do container (ver [seguranca.md](seguranca.md)).
 
 ### D5 — SQLite em volume
 
-- **Contexto:** o desafio pede "um banco de dados", sem especificar qual.
+- **Contexto:** o requisito exige persistência em banco de dados, sem impor uma tecnologia específica.
 - **Decisão:** SQLite (biblioteca padrão), arquivo em `./data`.
-- **Justificativa:** zero configuração para o avaliador, SQL completo, transações e integridade referencial. Detalhes em [banco-de-dados.md](banco-de-dados.md).
+- **Justificativa:** não exige serviço adicional de banco e oferece SQL completo, transações e integridade referencial. Detalhes em [banco-de-dados.md](banco-de-dados.md).
 - **Custo aceito:** um processo gravando por vez; evolução para PostgreSQL documentada.
 
 ### D6 — IPv4 e IPv6; não-IP descartado e contado
@@ -98,7 +98,7 @@ Cada decisão registra o contexto, a escolha, a justificativa e o custo aceito (
 
 ### D12 — Linha de comando com tabelas
 
-- **Contexto:** o desafio pede exibir estatísticas; uma interface web aumentaria escopo e risco.
+- **Contexto:** a solução precisa apresentar as estatísticas de forma clara e direta; uma interface web aumentaria a complexidade sem necessidade para este cenário.
 - **Decisão:** CLI com `argparse` (biblioteca padrão) e tabelas com `rich`; cálculo (`stats.py`) separado da apresentação (`report.py`).
 - **Justificativa:** simples de executar em Docker, legível e fácil de estender para outros formatos (JSON, web) sem alterar o cálculo.
 - **Custo aceito:** sem visualização gráfica.

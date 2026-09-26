@@ -1,13 +1,14 @@
- Container analizador-de-trafego-analyzer-run-a11c3e72922c Creating 
- Container analizador-de-trafego-analyzer-run-a11c3e72922c Created 
-────────────────────────────────────────────────────────────────────────────────────────────────────── Traffic statistics — session 2 ───────────────────────────────────────────────────────────────────────────────────────────────────────
-Summary                                
-┌─────────────────────────────┬───────┐
-│ Total packets captured (IP) │    94 │
-│ Total bytes                 │ 9,930 │
-│ Non-IP packets ignored      │     6 │
-└─────────────────────────────┴───────┘
-Packets by protocol                   
+ Container analizador-de-trafego-analyzer-run-dbea90f90c0c Creating
+ Container analizador-de-trafego-analyzer-run-dbea90f90c0c Created
+─────────────────────────────────────────── Traffic statistics — session 2 ───────────────────────────────────────────
+Summary
+┌────────────────────────┬───────┐
+│ Total packets captured │   100 │
+│ IP packets stored      │    94 │
+│ Non-IP packets ignored │     6 │
+│ Total bytes (IP)       │ 9,930 │
+└────────────────────────┴───────┘
+Packets by protocol
 ┏━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━┳━━━━━━━┓
 ┃ Protocol ┃ Packets ┃     % ┃ Bytes ┃
 ┡━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━╇━━━━━━━┩
@@ -15,7 +16,7 @@ Packets by protocol
 │ TCP      │      21 │ 22.3% │ 1,932 │
 │ UDP      │      15 │ 16.0% │ 2,314 │
 └──────────┴─────────┴───────┴───────┘
-Top 5 source IPs (by packets)            
+Top 5 source IPs (by packets)
 ┏━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━┓
 ┃ # ┃ Source IP       ┃ Packets ┃ Bytes ┃
 ┡━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━┩
@@ -25,7 +26,7 @@ Top 5 source IPs (by packets)
 │ 4 │ 108.158.137.96  │       4 │   420 │
 │ 5 │ 108.158.137.104 │       2 │   210 │
 └───┴─────────────────┴─────────┴───────┘
-Top 5 source IPs (by bytes)              
+Top 5 source IPs (by bytes)
 ┏━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━┓
 ┃ # ┃ Source IP       ┃ Packets ┃ Bytes ┃
 ┡━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━┩
@@ -35,7 +36,7 @@ Top 5 source IPs (by bytes)
 │ 4 │ 108.158.137.96  │       4 │   420 │
 │ 5 │ 108.158.137.104 │       2 │   210 │
 └───┴─────────────────┴─────────┴───────┘
-Top 5 destination IPs (by packets)       
+Top 5 destination IPs (by packets)
 ┏━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━┓
 ┃ # ┃ Destination IP  ┃ Packets ┃ Bytes ┃
 ┡━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━┩
@@ -45,7 +46,7 @@ Top 5 destination IPs (by packets)
 │ 4 │ 108.158.137.96  │       8 │   684 │
 │ 5 │ 108.158.137.104 │       4 │   342 │
 └───┴─────────────────┴─────────┴───────┘
-Top 5 destination IPs (by bytes)         
+Top 5 destination IPs (by bytes)
 ┏━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━┓
 ┃ # ┃ Destination IP  ┃ Packets ┃ Bytes ┃
 ┡━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━┩

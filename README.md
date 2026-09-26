@@ -22,7 +22,7 @@ Passo a passo para preparar o ambiente, executar a aplicação e conferir o resu
 | Top 5 IPs de origem e de destino | Quatro rankings: origem e destino, por pacotes e por bytes |
 | Armazenamento em banco de dados | SQLite (`data/traffic.db`), com as tabelas `capture_sessions` e `packets` |
 | Python + Docker | Python 3.13, Dockerfile multi-stage e Docker Compose |
-| Documentação e justificativas | Este README e a pasta DOCS (## Acerca da documentação) |
+| Documentação e justificativas | Este README e a pasta DOCS |
 
 ## Como funciona
 

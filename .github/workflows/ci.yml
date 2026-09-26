@@ -1,3 +1,5 @@
+# Em push na main e em pull requests, em máquina limpa: portão de qualidade,
+# build da imagem e scan de vulnerabilidades.
 name: CI
 
 on:
@@ -5,7 +7,7 @@ on:
     branches: [main]
   pull_request:
 
-# Least privilege: the workflow only needs to read the repository
+# Menor privilégio: o pipeline apenas lê o repositório.
 permissions:
   contents: read
 
@@ -14,16 +16,20 @@ jobs:
     name: Quality and security
     runs-on: ubuntu-latest
     steps:
-      # Actions pinned by commit SHA (supply chain protection)
+      # As actions são fixadas pelo hash (SHA) do commit, e não pela tag de
+      # versão, para proteger contra ataques de cadeia de suprimentos.
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # Mesmo script usado localmente: lint, formatação, testes, bandit e
+      # pip-audit.
       - name: Lint, tests, SAST and dependency audit
-        run: docker compose run --rm --build quality
+        run: docker compose run --rm -T --build quality
 
       - name: Build runtime image
         run: docker compose build analyzer
 
+      # Relatório completo (HIGH e CRITICAL), sem bloquear o build.
       - name: Image scan report (HIGH and CRITICAL)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -32,6 +38,8 @@ jobs:
           format: table
           exit-code: "0"
 
+      # Portão: o build falha somente se houver vulnerabilidade CRITICAL com
+      # correção disponível (ou seja, acionável). Ver docs/seguranca.md.
       - name: Image scan gate (fixable CRITICAL fails the build)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:

@@ -28,7 +28,7 @@ Cada requisito do desafio ligado à implementação, à forma de verificação e
 
 ## Números de referência — `samples/demo.pcap`
 
-Conferidos de forma independente (Scapy e Wireshark) e verificados pelos testes `test_demo_pcap_*`:
+Valores de referência da amostra, verificados pelos testes `test_demo_pcap_*`:
 
 | Métrica | Valor |
 |---|---|

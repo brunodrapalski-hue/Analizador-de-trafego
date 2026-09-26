@@ -1,21 +1,18 @@
-"""Traffic statistics computed with SQL queries over the stored packets.
-
-Every query accepts an optional session id: None means all sessions.
-The "(? IS NULL OR session_id = ?)" pattern keeps the queries static and
-fully parameterized (no SQL built from strings).
-"""
+"""Estatísticas por SQL. session_id=None considera todas as sessões."""
 
 import sqlite3
 from dataclasses import dataclass
 
 TOP_LIMIT = 5
 
+# Apenas pacotes armazenados (IP); não-IP ficam em capture_sessions.packets_ignored.
 TOTALS_QUERY = """
 SELECT COUNT(*), COALESCE(SUM(length), 0)
 FROM packets
 WHERE (? IS NULL OR session_id = ?)
 """
 
+# Não-IP não têm linha em packets; o total vem do contador de cada sessão.
 IGNORED_QUERY = """
 SELECT COALESCE(SUM(packets_ignored), 0)
 FROM capture_sessions
@@ -30,6 +27,8 @@ GROUP BY protocol
 ORDER BY packets DESC, protocol
 """
 
+# Quatro consultas fixas (origem/destino x pacotes/bytes) em vez de ORDER BY
+# montado em texto. Desempate por bytes ou pacotes e depois pelo IP.
 TOP_QUERIES = {
     ("src_ip", "packets"): """
         SELECT src_ip, COUNT(*) AS packets, SUM(length) AS bytes
@@ -63,7 +62,7 @@ ORDER BY id
 
 @dataclass(frozen=True)
 class Ranking:
-    """One row of a ranking: a protocol or an IP with its traffic."""
+    """Uma linha de ranking: um protocolo ou um IP, com pacotes e bytes."""
 
     key: str
     packets: int
@@ -72,7 +71,7 @@ class Ranking:
 
 @dataclass(frozen=True)
 class TrafficStats:
-    """Statistics of one session or of all sessions."""
+    """Estatísticas de uma sessão ou de todas (session_id=None)."""
 
     session_id: int | None
     total_packets: int
@@ -86,6 +85,7 @@ class TrafficStats:
 
 
 def session_exists(connection: sqlite3.Connection, session_id: int) -> bool:
+    """Indica se a sessão informada existe no banco."""
     row = connection.execute(
         "SELECT 1 FROM capture_sessions WHERE id = ?", (session_id,)
     ).fetchone()
@@ -93,6 +93,7 @@ def session_exists(connection: sqlite3.Connection, session_id: int) -> bool:
 
 
 def _rankings(rows) -> list[Ranking]:
+    """Converte as linhas retornadas pelo banco em objetos Ranking."""
     return [Ranking(key, packets, total) for key, packets, total in rows]
 
 
@@ -103,6 +104,7 @@ def _top(
     session_id: int | None,
     limit: int,
 ) -> list[Ranking]:
+    """Executa uma das consultas de ranking (origem/destino, pacotes/bytes)."""
     query = TOP_QUERIES[(column, order)]
     return _rankings(connection.execute(query, (session_id, session_id, limit)))
 
@@ -112,7 +114,7 @@ def compute_stats(
     session_id: int | None = None,
     limit: int = TOP_LIMIT,
 ) -> TrafficStats:
-    """Compute the traffic statistics required by the challenge."""
+    """Totais, pacotes por protocolo e os quatro rankings de uma sessão ou de todas."""
     params = (session_id, session_id)
     total_packets, total_bytes = connection.execute(TOTALS_QUERY, params).fetchone()
     (packets_ignored,) = connection.execute(IGNORED_QUERY, params).fetchone()
@@ -135,5 +137,5 @@ def compute_stats(
 
 
 def list_sessions(connection: sqlite3.Connection) -> list[tuple]:
-    """Return all capture sessions, oldest first."""
+    """Retorna todas as sessões de captura, da mais antiga para a mais nova."""
     return connection.execute(SESSIONS_QUERY).fetchall()

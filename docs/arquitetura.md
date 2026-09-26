@@ -100,7 +100,7 @@ flowchart TB
     subgraph Windows["Windows 11"]
         subgraph WSL["WSL2 — Ubuntu 24.04"]
             subgraph Docker["Docker Engine"]
-                C["Container analyzer<br/>network_mode: host<br/>cap_add: NET_RAW, NET_ADMIN"]
+                C["Container analyzer<br/>network_mode: host<br/>cap_add: NET_RAW"]
             end
             NIC[eth0 do WSL]
             V1[./data]
@@ -115,7 +115,7 @@ flowchart TB
 | Item | Configuração | Motivo |
 |---|---|---|
 | Rede | `network_mode: host` | O container enxerga as interfaces reais do host para capturar |
-| Privilégios | `cap_add: NET_RAW, NET_ADMIN` | Mínimo necessário para sockets brutos e modo promíscuo; sem `privileged` |
+| Privilégios | `cap_add: NET_RAW` | Capacidade necessária para sockets brutos; sem `NET_ADMIN` e sem `privileged` |
 | Dados | `./data:/app/data` | O banco persiste entre execuções |
 | Amostras | `./samples:/app/samples:ro` | Leitura de `.pcap` sem permissão de escrita |
 

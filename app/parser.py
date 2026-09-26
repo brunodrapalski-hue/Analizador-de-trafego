@@ -1,11 +1,7 @@
-"""Convert raw Scapy packets into normalized packet records.
+"""Converte pacotes Scapy em PacketRecord.
 
-Design decisions (see docs):
-- D6: only IPv4 and IPv6 packets are kept; non-IP frames (e.g. ARP) are discarded.
-- D7: the protocol is classified by the IP protocol number (IPv4 "proto",
-  IPv6 "nh"), mapped to TCP, UDP, ICMP, ICMPv6 or OTHER.
-- D8: the size is the full frame length in bytes, as reported by Wireshark.
-- D10: only metadata is extracted; the packet payload is never stored.
+Somente pacotes com camada IPv4 ou IPv6 geram registro; os demais retornam
+None e devem ser contabilizados por quem chama. O payload não é lido.
 """
 
 from dataclasses import dataclass
@@ -15,6 +11,8 @@ from scapy.layers.inet import IP
 from scapy.layers.inet6 import IPv6
 from scapy.packet import Packet
 
+# Números de protocolo IANA. Valores fora da tabela viram OTHER; o número
+# original fica em protocol_num.
 PROTOCOL_NAMES = {
     1: "ICMP",
     6: "TCP",
@@ -26,34 +24,39 @@ OTHER_PROTOCOL = "OTHER"
 
 @dataclass(frozen=True)
 class PacketRecord:
-    """Metadata of a single captured packet."""
+    """Metadados de um pacote capturado, prontos para gravação no banco."""
 
-    captured_at: datetime
+    captured_at: datetime  # UTC
     ip_version: int
     src_ip: str
     dst_ip: str
-    protocol: str
+    protocol: str  # TCP, UDP, ICMP, ICMPv6 ou OTHER
     protocol_num: int
-    length: int
+    length: int  # bytes do frame completo (ver frame_length)
 
 
 def classify_protocol(protocol_num: int) -> str:
-    """Return the protocol name for an IP protocol number."""
+    """Converte o número de protocolo do cabeçalho IP em um nome legível."""
     return PROTOCOL_NAMES.get(protocol_num, OTHER_PROTOCOL)
 
 
 def frame_length(packet: Packet) -> int:
-    """Return the original frame length in bytes.
+    """Tamanho do frame em bytes.
 
-    Packets read from a pcap file keep the original size in "wirelen",
-    even if the capture was truncated. Live packets use len(packet).
+    Usa wirelen quando disponível: pacotes lidos de .pcap preservam o tamanho
+    original mesmo se a gravação foi truncada (snaplen). Caso contrário, usa
+    len(packet).
     """
     wirelen = getattr(packet, "wirelen", None)
     return wirelen if wirelen else len(packet)
 
 
 def parse_packet(packet: Packet) -> PacketRecord | None:
-    """Extract the metadata of an IP packet, or return None if it is not IP."""
+    """Retorna o registro do pacote ou None se não houver camada IPv4/IPv6.
+
+    Quem chama deve contabilizar os retornos None.
+    """
+    # A ordem importa: com IPv4 e IPv6 no mesmo pacote (túneis), prevalece a IPv4.
     if packet.haslayer(IP):
         layer = packet[IP]
         ip_version = 4
@@ -66,6 +69,7 @@ def parse_packet(packet: Packet) -> PacketRecord | None:
         return None
 
     return PacketRecord(
+        # packet.time é o horário da captura em epoch; convertido para UTC.
         captured_at=datetime.fromtimestamp(float(packet.time), tz=UTC),
         ip_version=ip_version,
         src_ip=layer.src,

@@ -29,7 +29,7 @@ docker compose build
 # 1. Análise do arquivo de amostra incluído (funciona em qualquer máquina)
 docker compose run --rm analyzer capture --pcap samples/demo.pcap
 
-# 2. Captura ao vivo: 100 pacotes da interface eth0
+# 2. Captura ao vivo: 100 frames da interface eth0 (IP ou não-IP)
 docker compose run --rm analyzer capture --iface eth0 --count 100
 ```
 
@@ -65,7 +65,7 @@ Opções da captura ao vivo:
 
 | Opção | Descrição | Exemplo |
 |---|---|---|
-| `-c`, `--count` | Para após N pacotes (padrão: ilimitado) | `--count 500` |
+| `-c`, `--count` | Para após N frames recebidos após o filtro, inclusive não-IP (padrão: ilimitado) | `--count 500` |
 | `-t`, `--duration` | Para após N segundos | `--duration 60` |
 | `-f`, `--filter` | Filtro BPF (mesma sintaxe do tcpdump/Wireshark) | `--filter "tcp or udp"` |
 
@@ -122,13 +122,13 @@ Detalhes em [docs/arquitetura.md](docs/arquitetura.md).
 ## Qualidade e segurança
 
 ```bash
-docker compose run --rm --build quality   # lint, formatação, testes, SAST e auditoria de dependências
+docker compose run --rm -T --build quality   # lint, formatação, testes, SAST e auditoria de dependências
 docker compose run --rm --build tests     # somente os testes
 ```
 
 | Verificação | Ferramenta | Resultado |
 |---|---|---|
-| Testes automatizados | pytest | 31 testes, incluindo validação com o `demo.pcap` |
+| Testes automatizados | pytest | 41 testes, incluindo validação com o `demo.pcap` |
 | Estilo e padrões inseguros | ruff | sem apontamentos |
 | Análise estática de segurança (SAST) | bandit | 0 problemas |
 | Vulnerabilidades em dependências | pip-audit | nenhuma conhecida |
@@ -176,4 +176,4 @@ Tudo roda automaticamente no GitHub Actions a cada push. Controles de segurança
 
 - IPv6 com cabeçalhos de extensão é classificado pelo primeiro cabeçalho (ex.: Hop-by-Hop aparece como `OTHER`).
 - SQLite atende a um capturador por vez; para múltiplos sensores simultâneos, a evolução natural é PostgreSQL (a camada `storage.py` é isolada para facilitar a troca).
-- O container executa como root, pois a captura exige sockets brutos; o privilégio é limitado às capacidades `NET_RAW` e `NET_ADMIN` (ver [docs/seguranca.md](docs/seguranca.md)).
+- O container executa como root, pois a captura exige sockets brutos; o privilégio é limitado à capacidade `NET_RAW` (ver [docs/seguranca.md](docs/seguranca.md)).

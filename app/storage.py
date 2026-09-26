@@ -1,4 +1,7 @@
-"""SQLite persistence for capture sessions and packet metadata."""
+"""Schema e escrita no SQLite: sessões de captura e pacotes.
+
+As consultas de estatística ficam em stats.py. Modelo em docs/banco-de-dados.md.
+"""
 
 import sqlite3
 from collections.abc import Iterable
@@ -7,6 +10,8 @@ from pathlib import Path
 
 from app.parser import PacketRecord
 
+# IF NOT EXISTS: cria na primeira execução e preserva dados existentes.
+# Os índices seguem os filtros e agrupamentos de stats.py.
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS capture_sessions (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,21 +50,33 @@ INSERT INTO packets (
 
 
 def utc_now() -> str:
-    """Current time as an ISO 8601 UTC string."""
+    """Retorna o horário atual em UTC no formato ISO 8601.
+
+    Exemplo: 2026-09-25T12:00:00+00:00
+    """
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 class Storage:
-    """Repository for capture sessions and packets in a SQLite database."""
+    """Sessões e pacotes no SQLite.
+
+    Use com "with": a conexão é fechada ao sair do bloco, inclusive em exceção.
+    """
 
     def __init__(self, db_path: Path) -> None:
+        # Cria o diretório do banco se não existir (ex.: clone sem data/).
         db_path.parent.mkdir(parents=True, exist_ok=True)
         self.connection = sqlite3.connect(db_path)
+        # No SQLite a verificação de chave estrangeira vem desligada por
+        # padrão; ela precisa ser ativada a cada conexão.
         self.connection.execute("PRAGMA foreign_keys = ON")
         self.connection.executescript(SCHEMA)
 
     def start_session(self, source: str, bpf_filter: str | None = None) -> int:
-        """Register a new capture session and return its id."""
+        """Insere a sessão (origem, filtro, início em UTC) e retorna o id.
+
+        Fim e contadores são gravados por finish_session.
+        """
         with self.connection:
             cursor = self.connection.execute(
                 "INSERT INTO capture_sessions (source, bpf_filter, started_at) "
@@ -69,7 +86,10 @@ class Storage:
         return cursor.lastrowid
 
     def insert_packets(self, session_id: int, records: Iterable[PacketRecord]) -> int:
-        """Insert a batch of packet records in a single transaction."""
+        """Grava os registros em uma única transação e retorna a quantidade enviada.
+
+        Em erro, nenhum registro do lote é gravado.
+        """
         rows = [
             (
                 session_id,
@@ -83,6 +103,7 @@ class Storage:
             )
             for record in records
         ]
+        # Commit ao sair do bloco, rollback em exceção. Não fecha a conexão.
         with self.connection:
             self.connection.executemany(INSERT_PACKET, rows)
         return len(rows)
@@ -90,7 +111,10 @@ class Storage:
     def finish_session(
         self, session_id: int, packets_stored: int, packets_ignored: int
     ) -> None:
-        """Close a capture session with its final counters."""
+        """Registra o fim (UTC) e os contadores da sessão.
+
+        packets_ignored = pacotes sem IP descartados pelo parser.
+        """
         with self.connection:
             self.connection.execute(
                 "UPDATE capture_sessions "

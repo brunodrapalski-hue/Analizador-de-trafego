@@ -7,7 +7,7 @@ Cada decisão registra o contexto, a escolha, a justificativa e o custo aceito (
 | D1 | Ambiente | Linux (WSL2) + Docker Engine |
 | D2 | Linguagem e versões | Python 3.13, Scapy 2.7.0 |
 | D3 | Fontes de pacotes | Captura ao vivo **e** leitura de `.pcap` |
-| D4 | Rede e privilégios do container | `network_mode: host` + `NET_RAW`/`NET_ADMIN` |
+| D4 | Rede e privilégios do container | `network_mode: host` + `NET_RAW` |
 | D5 | Banco de dados | SQLite em volume |
 | D6 | Escopo de pacotes | IPv4 e IPv6; não-IP descartado e contado |
 | D7 | Classificação de protocolo | Pelo número de protocolo do cabeçalho IP |
@@ -43,7 +43,7 @@ Cada decisão registra o contexto, a escolha, a justificativa e o custo aceito (
 ### D4 — `network_mode: host` + capacidades mínimas
 
 - **Contexto:** capturar exige sockets brutos; a forma mais simples seria `privileged: true`.
-- **Decisão:** rede do host e apenas as capacidades `NET_RAW` (sockets brutos) e `NET_ADMIN` (modo promíscuo).
+- **Decisão:** rede do host e apenas a capacidade `NET_RAW`, necessária para abrir sockets brutos e realizar a captura.
 - **Justificativa:** princípio do menor privilégio — o container não recebe acesso a dispositivos nem às demais capacidades administrativas.
 - **Custo aceito:** o container compartilha a pilha de rede do host (necessário para capturar) e executa como root dentro do container (ver [seguranca.md](seguranca.md)).
 

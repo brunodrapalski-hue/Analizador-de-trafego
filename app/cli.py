@@ -1,4 +1,8 @@
-"""Command-line interface."""
+"""Comandos capture, stats e sessions.
+
+FileNotFoundError, ValueError, PermissionError e Scapy_Exception viram uma
+linha "ERROR: ..." e código de saída 1. Outras exceções não são tratadas aqui.
+"""
 
 import argparse
 import logging
@@ -17,7 +21,22 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 
+def _positive_int(value: str) -> int:
+    """Converte para inteiro positivo para uso nas opções da CLI."""
+    try:
+        number = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            "must be an integer greater than zero"
+        ) from None
+
+    if number <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return number
+
+
 def build_parser() -> argparse.ArgumentParser:
+    """Monta os comandos, as opções e os textos de ajuda (--help)."""
     parser = argparse.ArgumentParser(
         prog="traffic-analyzer",
         description=(
@@ -42,14 +61,14 @@ def build_parser() -> argparse.ArgumentParser:
     capture.add_argument(
         "-c",
         "--count",
-        type=int,
+        type=_positive_int,
         default=0,
         help="live capture: stop after N packets (default: unlimited)",
     )
     capture.add_argument(
         "-t",
         "--duration",
-        type=int,
+        type=_positive_int,
         help="live capture: stop after N seconds",
     )
     capture.add_argument(
@@ -71,20 +90,42 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _validate_capture_options(args: argparse.Namespace) -> None:
+    """Rejeita opções de captura ao vivo quando a origem é um arquivo .pcap."""
+    if args.command != "capture" or args.pcap is None:
+        return
+
+    invalid = []
+    if args.count:
+        invalid.append("--count")
+    if args.duration is not None:
+        invalid.append("--duration")
+    if args.bpf_filter is not None:
+        invalid.append("--filter")
+
+    if invalid:
+        options = ", ".join(invalid)
+        raise ValueError(f"{options} can only be used with --iface.")
+
+
 def run_capture(args: argparse.Namespace, storage: Storage) -> CaptureResult:
+    """Escolhe a fonte de pacotes conforme a opção informada."""
+    batch_size = config.get_batch_size()
+
     if args.pcap:
-        return read_pcap(storage, args.pcap, config.BATCH_SIZE)
+        return read_pcap(storage, args.pcap, batch_size)
     return capture_live(
         storage,
         interface=args.iface,
         count=args.count,
         duration=args.duration,
         bpf_filter=args.bpf_filter,
-        batch_size=config.BATCH_SIZE,
+        batch_size=batch_size,
     )
 
 
 def command_capture(args: argparse.Namespace, storage: Storage) -> None:
+    """Executa a captura e, ao final, exibe as estatísticas da sessão."""
     result = run_capture(args, storage)
     logger.info(
         "Session %d finished: %d packets stored, %d non-IP packets ignored.",
@@ -96,6 +137,8 @@ def command_capture(args: argparse.Namespace, storage: Storage) -> None:
 
 
 def command_stats(args: argparse.Namespace, storage: Storage) -> None:
+    """Exibe as estatísticas de uma sessão ou, sem --session, de todas."""
+    # Sessão inexistente vira erro, não tabelas vazias (que pareceriam "sem tráfego").
     if args.session is not None and not session_exists(
         storage.connection, args.session
     ):
@@ -104,6 +147,7 @@ def command_stats(args: argparse.Namespace, storage: Storage) -> None:
 
 
 def command_sessions(args: argparse.Namespace, storage: Storage) -> None:
+    """Lista as sessões de captura registradas no banco."""
     render_sessions(console, list_sessions(storage.connection))
 
 
@@ -115,10 +159,15 @@ COMMANDS = {
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Executa o comando e retorna 0 (sucesso) ou 1 (erro tratado).
+
+    argv permite chamar a aplicação a partir dos testes.
+    """
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     args = build_parser().parse_args(argv)
 
     try:
+        _validate_capture_options(args)
         with Storage(args.db) as storage:
             COMMANDS[args.command](args, storage)
     except (FileNotFoundError, ValueError, PermissionError, Scapy_Exception) as error:

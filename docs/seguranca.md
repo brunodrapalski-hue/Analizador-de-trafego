@@ -11,7 +11,7 @@ Capture tráfego **somente** em redes e equipamentos sob sua responsabilidade ou
 | Controle | Implementação | Referência |
 |---|---|---|
 | Minimização de dados | Só metadados são gravados; o conteúdo dos pacotes nunca é lido para armazenamento | D10, `app/parser.py` |
-| Menor privilégio no container | Apenas `NET_RAW` e `NET_ADMIN`; sem `privileged` | D4, `docker-compose.yml` |
+| Menor privilégio no container | Apenas `NET_RAW`; sem `NET_ADMIN` e sem `privileged` | D4, `docker-compose.yml` |
 | Amostras somente leitura | Volume `./samples` montado com `:ro` | `docker-compose.yml` |
 | Prevenção de SQL injection | Consultas estáticas e parametrizadas (`?`); nenhum SQL montado com texto | `app/storage.py`, `app/stats.py` |
 | Integridade dos dados | Chave estrangeira, `CHECK`, `NOT NULL` e transações | [banco-de-dados.md](banco-de-dados.md) |
@@ -58,7 +58,7 @@ Capture tráfego **somente** em redes e equipamentos sob sua responsabilidade ou
 | ID | Risco | Probabilidade | Impacto | Controles compensatórios | Decisão | Reavaliação |
 |---|---|---|---|---|---|---|
 | RR-01 | 45 vulnerabilidades HIGH em pacotes do Debian (ex.: `util-linux`, `acl`) **sem correção publicada** | Baixa | Médio | Os binários afetados (ex.: `mount`, `nsenter`) não são executados pela aplicação; o container não possui `SYS_ADMIN`; execução efêmera (`--rm`); exploração exige execução prévia de comandos dentro do container | **Aceitar** e monitorar | A cada build no CI; atualizar a imagem base quando houver correção |
-| RR-02 | Container executa como root | Baixa | Médio | Capacidades limitadas a `NET_RAW`/`NET_ADMIN`; sem `privileged`; sem serviços expostos | **Aceitar** (captura exige sockets brutos) | Evolução: usuário não-root com *file capabilities* no interpretador |
+| RR-02 | Container executa como root | Baixa | Médio | Capacidade limitada a `NET_RAW`; sem `NET_ADMIN`; sem `privileged`; sem serviços expostos | **Aceitar** (captura exige sockets brutos) | Evolução: usuário não-root com *file capabilities* no interpretador |
 | RR-03 | `network_mode: host` compartilha a pilha de rede do host | Baixa | Baixo | A aplicação não abre portas nem escuta conexões | **Aceitar** (necessário para capturar) | — |
 | RR-04 | Banco contém IPs (dado pessoal) | Média | Médio | Somente metadados; armazenamento local; fora do Git; retenção recomendada | **Mitigar** com orientação de uso | Ao compartilhar resultados |
 
@@ -68,7 +68,9 @@ Capture tráfego **somente** em redes e equipamentos sob sua responsabilidade ou
 
 ```bash
 # Lint, formatação, testes, bandit e pip-audit
-docker compose run --rm -T --build quality | tee docs/security/quality-report.txt
+docker compose --profile test build quality
+set -o pipefail
+docker compose run --rm -T quality 2>&1 | sed 's/[[:space:]]*$//' | tee docs/security/quality-report.txt
 
 # Scan da imagem de execução
 docker compose build analyzer

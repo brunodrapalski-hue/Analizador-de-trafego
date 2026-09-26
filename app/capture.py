@@ -1,8 +1,8 @@
-"""Packet capture from a network interface or from a pcap file.
+"""Captura ao vivo (sniff) e leitura de .pcap (PcapReader).
 
-Both sources share the same pipeline: parse each packet, buffer the records
-and write them to the database in batches (D11). Pending records are always
-flushed when the capture ends, including on Ctrl+C.
+Os dois modos usam o mesmo PacketCollector. count, duration e filtro BPF
+existem apenas na captura ao vivo. O buffer pendente é gravado e a sessão
+é encerrada no finally de cada função.
 """
 
 import logging
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class CaptureResult:
-    """Summary of a finished capture session."""
+    """Resumo de uma sessão de captura encerrada, usado para exibir o resultado."""
 
     session_id: int
     packets_stored: int
@@ -30,7 +30,7 @@ class CaptureResult:
 
 
 class PacketCollector:
-    """Parse packets and store them in batches for one capture session."""
+    """Acumula os registros de uma sessão, grava em lotes e mantém os contadores."""
 
     def __init__(self, storage: Storage, session_id: int, batch_size: int) -> None:
         self.storage = storage
@@ -41,6 +41,10 @@ class PacketCollector:
         self.packets_ignored = 0
 
     def handle(self, packet: Packet) -> None:
+        """Normaliza e acumula o pacote; grava ao atingir batch_size.
+
+        Pacotes sem IP só incrementam packets_ignored.
+        """
         record = parse_packet(packet)
         if record is None:
             self.packets_ignored += 1
@@ -50,6 +54,7 @@ class PacketCollector:
             self.flush()
 
     def flush(self) -> None:
+        """Grava no banco os registros acumulados e esvazia o buffer."""
         if self.buffer:
             self.packets_stored += self.storage.insert_packets(
                 self.session_id, self.buffer
@@ -57,6 +62,7 @@ class PacketCollector:
             self.buffer.clear()
 
     def finish(self) -> CaptureResult:
+        """Grava o que restou no buffer e encerra a sessão com os contadores."""
         self.flush()
         self.storage.finish_session(
             self.session_id, self.packets_stored, self.packets_ignored
@@ -72,7 +78,11 @@ def capture_live(
     bpf_filter: str | None = None,
     batch_size: int = 100,
 ) -> CaptureResult:
-    """Capture packets from a network interface until count, duration or Ctrl+C."""
+    """Captura da interface até count, duration ou Ctrl+C.
+
+    count conta todos os pacotes recebidos após o filtro BPF, inclusive não-IP.
+    """
+    # Validada antes de criar a sessão: interface inexistente não gera registro.
     available = get_if_list()
     if interface not in available:
         raise ValueError(
@@ -83,17 +93,19 @@ def capture_live(
     collector = PacketCollector(storage, session_id, batch_size)
     logger.info("Capturing on %s (press Ctrl+C to stop)...", interface)
     try:
+        # store=False: o Scapy não guarda os pacotes; cada um é processado e descartado.
         sniff(
             iface=interface,
             prn=collector.handle,
             store=False,
-            count=count,
-            timeout=duration,
+            count=count,  # 0 = sem limite de quantidade
+            timeout=duration,  # None = sem limite de tempo
             filter=bpf_filter,
         )
     except KeyboardInterrupt:
         logger.info("Capture interrupted by user.")
     finally:
+        # Executa também em Ctrl+C e em erro do sniff: grava o buffer e fecha a sessão.
         result = collector.finish()
     return result
 
@@ -101,7 +113,10 @@ def capture_live(
 def read_pcap(
     storage: Storage, pcap_path: Path, batch_size: int = 100
 ) -> CaptureResult:
-    """Read packets from a pcap file, streaming it to keep memory usage low."""
+    """Lê o .pcap em streaming (PcapReader).
+
+    Arquivo inexistente levanta FileNotFoundError antes de criar a sessão.
+    """
     if not pcap_path.is_file():
         raise FileNotFoundError(f"pcap file not found: {pcap_path}")
 
@@ -113,5 +128,6 @@ def read_pcap(
             for packet in reader:
                 collector.handle(packet)
     finally:
+        # Grava o buffer e fecha a sessão mesmo se a leitura falhar.
         result = collector.finish()
     return result

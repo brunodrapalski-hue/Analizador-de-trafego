@@ -1,4 +1,4 @@
-[README.md](https://github.com/user-attachments/files/32691087/README.md)
+
 # Analisador de Tráfego de Rede
 
 [![CI](https://github.com/brunodrapalski-hue/Analizador-de-trafego/actions/workflows/ci.yml/badge.svg)](https://github.com/brunodrapalski-hue/Analizador-de-trafego/actions/workflows/ci.yml)

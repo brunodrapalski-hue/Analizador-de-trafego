@@ -11,9 +11,12 @@ A captura ao vivo varia com o ambiente: ela serve para comprovar o funcionamento
 | Seu ambiente | Comece em |
 |---|---|
 | **Windows 10/11** | [Etapa 1 — Verificar e preparar o Windows](#etapa-1--verificar-e-preparar-o-windows) |
-| **Linux com Docker Engine e Docker Compose** | [Etapa 2 — Verificar os pré-requisitos](#etapa-2--verificar-os-pré-requisitos) |
+| **Linux ou Windows com Docker Engine e Docker Compose** | [Etapa 2 — Verificar os pré-requisitos](#etapa-2--verificar-os-pré-requisitos) |
 
-> **Por que WSL2 com Docker Engine, e não Docker Desktop?**  
+> **Ambiente de homologação:** este guia foi validado em máquinas com Windows 10 e Windows 11, considerando cenários com e sem distribuição Linux previamente instalada, ambos com e sem Docker previamente configurados. Nesses cenários foi valido. Embora para validação completa, recomendo seguir o guia com uma nova instalação. 
+
+> **Por escolhi WSL2 com Docker Engine, e não Docker Desktop?**
+> 
 > A captura ao vivo precisa enxergar uma interface de rede do ambiente Linux onde o tráfego de teste é gerado. Com o Docker Engine executado dentro do WSL2, o container utiliza a rede desse Linux e consegue capturar na interface `eth0` do WSL. Isso mantém identificação da interface, geração de tráfego, Docker e captura no mesmo contexto de rede. A decisão e o custo aceito estão detalhados em [docs/decisoes.md](decisoes.md).
 
 ---
@@ -24,11 +27,7 @@ A captura ao vivo varia com o ambiente: ela serve para comprovar o funcionamento
 
 **Objetivo:** identificar o que já está disponível na máquina e instalar somente os componentes necessários para executar e validar a aplicação.
 
-> **Ambiente de referência:** este procedimento foi validado em uma segunda máquina com Windows, partindo de um ambiente sem distribuição Linux e sem Docker Engine previamente configurados.
->
-> Se a máquina já possuir Ubuntu no WSL2, Git ou Docker Engine, não é necessário recriar o ambiente. As próximas etapas verificam o estado atual da máquina e permitem avançar sempre que os pré-requisitos já estiverem atendidos.
-
-A preparação do WSL2 e do Docker Engine é necessária apenas uma vez.
+> Se a máquina já possuir Ubuntu no WSL2, Git ou Docker Engine, não é necessário recriar o ambiente. As próximas etapas verificam o estado atual da máquina e permitem avançar sempre que os pré-requisitos já estiverem atendidos. Embora para validação ideal continuo recomendando uma nova instalação. A preparação do WSL2 e do Docker Engine é necessária apenas uma vez.
 
 <br>
 
@@ -54,12 +53,12 @@ O primeiro comando mostra o estado geral do WSL. O segundo lista as distribuiç�
 * Ubuntu-24.04    Running         2
 ```
 
-Se `Ubuntu-24.04` já aparecer com `VERSION` igual a `2`, o ambiente Linux necessário já está disponível. **Não reinstale o WSL nem o Ubuntu** e avance para a [Etapa 1.4](#14-verificar-git-e-docker-engine).
+Se `Ubuntu-24.04` já aparecer com `VERSION` igual a `2`, e o `STATE` como `RUNNING` o ambiente Linux necessário já está disponível. avance para a [Etapa 1.4](#14-verificar-git-e-docker-engine).
 
-Se o Ubuntu 24.04 não estiver listado ou o WSL ainda não estiver disponível, continue para a próxima etapa.
+Se o Ubuntu 24.04 não estiver listado ou o WSL ainda não estiver disponível, continue para a próxima etapa. 
 
-> O objetivo desta verificação é evitar alterações desnecessárias em uma máquina que já possua parte do ambiente preparado.
-
+> O objetivo desta verificação é evitar alterações desnecessárias em um ambiente de uso de laboratório que já possua parte do ambiente preparado.
+> Caso tenha o ambiente linux, faça sua avaliação de utilização para esse Guia.
 
 <br>
 
@@ -73,19 +72,23 @@ No **PowerShell como administrador**, execute:
 wsl --install -d Ubuntu-24.04
 ```
 
-O comando baixa, instala e registra o Ubuntu 24.04 no WSL2. Ao concluir a instalação, o próprio processo inicia o primeiro provisionamento da distribuição na mesma janela do terminal.
+> O comando baixa, instala e registra o Ubuntu 24.04 no WSL2. Ao concluir a instalação, o próprio processo inicia o primeiro provisionamento da distribuição. Pode ser necessário reiniciar o computador para aplicar as alterações.
 
 Uma sequência semelhante à abaixo será exibida:
 
 ```text
-Baixando: Ubuntu 24.04 LTS
-Instalando: Ubuntu 24.04 LTS
+Baixando: linux 24.04 LTS
+Instalando: linux 24.04 LTS
 Distribuição instalada com êxito.
 Iniciando Ubuntu-24.04...
 Provisioning the new WSL instance Ubuntu-24.04
 This might take a while...
-Create a default Unix user account:
 ```
+Se o computador pedir para reiniciar, reinicie.
+
+> **Observação:** antes de avançar, confirme que o Ubuntu-24.04 está instalado como WSL2 e consegue ser iniciado. Se estiver Stopped, execute 'wsl -d Ubuntu-24.04', se o provisionamento automatico iniciar, já crie um usuário e senha simples. Dando certo, desconsidere os próximos itens avançando paras as etapas.
+
+<br>
 
 Quando aparecer:
 
@@ -236,8 +239,7 @@ A preparação do inicial do Windows está concluída.
 
 Esta etapa é o ponto comum para:
 
-- Windows preparado pela Etapa 1;
-- Linux que já possui Docker Engine e Docker Compose.
+- Windows e Linux preparado pelas etapas.
 
 No **terminal Linux**, execute:
 
@@ -263,9 +265,6 @@ O ambiente está pronto para importar o projeto.
 ---
 
 <br>
-<br>
-<br>
-<br>
 
 ## Etapa 3 — Importar o projeto
 
@@ -281,11 +280,6 @@ Vá para a pasta pessoal do usuário Linux:
 
 ```bash
 cd
-```
-
-Confirme o diretório atual:
-
-```bash
 pwd
 ```
 
@@ -317,7 +311,7 @@ Receiving objects: 100% (...)
 Resolving deltas: 100% (...)
 ```
 
-> O clone precisa ser realizado apenas uma vez. Se a pasta `Analizador-de-trafego` já existir porque o projeto foi clonado anteriormente, não execute `git clone` novamente. Prossiga para a próxima etapa.
+> O clone precisa ser realizado apenas uma vez. Se a pasta `Analizador-de-trafego` já existir porque o projeto foi clonado anteriormente. Prossiga para a próxima etapa.
 
 <br>
 
@@ -392,11 +386,13 @@ docker compose run --rm analyzer --help
 
 **Objetivo:** validar, com uma entrada conhecida e reproduzível, o fluxo de processamento da aplicação: leitura dos pacotes → interpretação dos metadados → persistência no SQLite → cálculo e apresentação das estatísticas.
 
-O arquivo `samples/demo.pcap` foi incluído como amostra de referência para esta validação. Como seu conteúdo não muda entre as execuções, os resultados obtidos podem ser comparados com valores conhecidos, sem depender do tráfego disponível na rede naquele momento.
+O arquivo `samples/demo.pcap` foi incluído como amostra de referência para esta validação. Como seu conteúdo deixei estático, os resultados obtidos podem ser comparados com valores conhecidos, sem depender do tráfego disponível na rede naquele momento.
 
-> Esta etapa não substitui a captura ao vivo. O `.pcap` é utilizado para validar de o processamento, o armazenamento e as estatísticas. A captura real de uma interface será validada separadamente na próxima etapa.
+> Esta etapa não substitui a captura ao vivo. O `.pcap` é utilizado para validar de o processamento, o armazenamento e as estatísticas. A captura real de uma interface será validada nas próximas etapas.
+
 
 Continue no diretório do terminal ubuntu dentro do: ~/Analizador-de-trafego
+
 
 Execute:
 
@@ -405,6 +401,7 @@ docker compose run --rm analyzer capture --pcap samples/demo.pcap
 ```
 
 > O comando lê os pacotes da amostra pelo mesmo `PacketCollector` utilizado pela captura ao vivo, grava os metadados no banco e, ao final da sessão, calcula e exibe as estatísticas correspondentes.
+
 
 **Resultado esperado:** são exibidos o resumo da sessão, a distribuição por protocolo e os rankings de IPs de origem e destino. A saída completa utilizada como referência está disponível em [docs/evidencias/01-estatisticas-demo-pcap.txt](evidencias/01-estatisticas-demo-pcap.txt).
 
@@ -463,7 +460,7 @@ docker0          DOWN           02:42:xx:xx:xx:xx <NO-CARRIER,BROADCAST,MULTICAS
 
 ### 6.2 Capturar por 30 segundos gerando tráfego
 
-Nesta etapa, a captura ao vivo será validada em dois cenários.
+Nesta etapa, escohi que a captura ao vivo será validada em dois cenários.
 
 A primeira execução utiliza tráfego simples e tem como objetivo confirmar rapidamente que a aplicação consegue capturar pacotes da interface, armazenar os metadados e gerar as estatísticas ao final da sessão. Na segunda execução, pensei em utilizar um gerador de tráfego controlado para disparar diferentes protocolos durante a captura. Isso permite observar como a distribuição apresentada pela aplicação muda quando a entrada se torna mais variada.
 
@@ -481,6 +478,7 @@ cd ~/Analizador-de-trafego
 
 O primeiro teste utiliza apenas alguns comandos de rede comuns. A intenção é validar a estrutura da captura ao vivo antes de gerar um conjunto maior e mais controlado de pacotes.
 
+
 No **Terminal 1**, inicie uma captura de 30 segundos:
 
 ```bash
@@ -495,6 +493,7 @@ INFO: Capturing on eth0 (press Ctrl+C to stop)...
 ```
 
 > O nome da interface varia conforme a máquina e a configuração de rede.
+
 
 Enquanto a captura estiver ativa, execute no **Terminal 2**:
 
@@ -513,11 +512,13 @@ Esse primeiro cenário é propositalmente simples. O objetivo não é preencher 
 - a sessão termina corretamente;
 - as estatísticas são calculadas e exibidas.
 
+
 Após 30 segundos, o **Terminal 1** encerra a captura automaticamente e apresenta uma mensagem semelhante a:
 
 ```text
 INFO: Session N finished: ... packets stored, ... non-IP packets ignored.
 ```
+
 
 Em seguida, são exibidas as estatísticas da sessão.
 
@@ -529,7 +530,8 @@ Além do tráfego gerado manualmente, outros protocolos podem aparecer porque a 
 
 Depois de confirmar o funcionamento básico, execute uma segunda captura.
 
-Nesta validação, a intenção é gerar deliberadamente diferentes categorias de tráfego para observar como elas são classificadas pela aplicação e como o resultado se diferencia da primeira execução.
+Nesta validação, a intenção é gerar diferentes categorias de tráfego para observar como elas são classificadas pela aplicação e como o resultado se diferencia da primeira execução.
+
 
 No **Terminal 1**, inicie novamente uma captura de 30 segundos:
 
@@ -537,9 +539,11 @@ No **Terminal 1**, inicie novamente uma captura de 30 segundos:
 docker compose run --rm analyzer capture --iface auto --duration 30
 ```
 
+
 Assim que a captura começar, **copie o bloco abaixo inteiro** e execute no **Terminal 2**.
 
 O script utiliza o Scapy e as bibliotecas Python já presentes. Durante aproximadamente **25 segundos**, ele gera o tráfego representando as categorias tratadas pela aplicação.
+
 
 O gerador utiliza 25 segundos, e não 30, para deixar uma pequena margem entre o início da captura no Terminal 1 e a execução do bloco no Terminal 2.
 
@@ -611,7 +615,9 @@ print(
 EOF
 ```
 
+
 O tráfego gerado foi escolhido para exercitar as diferentes categorias reconhecidas pela aplicação:
+
 
 | Tipo | Tráfego gerado | Onde aparece |
 |---|---|---|
@@ -622,6 +628,7 @@ O tráfego gerado foi escolhido para exercitar as diferentes categorias reconhec
 | OTHER | pacote IP com protocolo 47 (GRE) | `OTHER` |
 | ARP | consulta ARP ao gateway | `Non-IP packets ignored` |
 
+
 **Resultado esperado no Terminal 2:** uma saída semelhante a:
 
 ```text
@@ -629,9 +636,8 @@ Gerando tráfego por 25 s na interface eth0...
 Concluído: 23 rodadas de ICMP, UDP, TCP, ICMPv6, OTHER (GRE) e ARP.
 ```
 
-O nome da interface e a quantidade de rodadas podem variar.
 
-Após os 30 segundos, o **Terminal 1** encerra a captura e apresenta novamente as estatísticas da sessão.
+O nome da interface e a quantidade de rodadas podem variar. Após os 30 segundos, o **Terminal 1** encerra a captura e apresenta novamente as estatísticas da sessão.
 
 Nesta segunda execução, a tabela `Packets by protocol` deve permitir observar uma variedade maior de categorias, incluindo **TCP, UDP, ICMP, ICMPv6 e OTHER**. Os pacotes ARP são contabilizados no resumo como `Non-IP packets ignored`.
 
@@ -643,11 +649,13 @@ As duas execuções criam sessões independentes no banco de dados.
 
 A primeira demonstra o comportamento da aplicação com uma pequena quantidade de tráfego gerado manualmente. A segunda utiliza uma entrada mais controlada e diversificada para exercitar as categorias de protocolo tratadas pelo parser.
 
+
 Para visualizar as sessões criadas:
 
 ```bash
 docker compose run --rm analyzer sessions
 ```
+
 
 Os resultados podem ser consultados individualmente utilizando o ID de cada sessão:
 
@@ -655,17 +663,14 @@ Os resultados podem ser consultados individualmente utilizando o ID de cada sess
 docker compose run --rm analyzer stats --session N
 ```
 
+
 Ao comparar as duas execuções, espera-se que a segunda apresente uma distribuição de protocolos mais diversificada. Os valores absolutos não precisam ser iguais entre máquinas ou execuções, pois o tráfego normal do ambiente continua sendo capturado junto com o tráfego gerado pelo teste.
 
 Essa comparação permite validar não apenas que a aplicação está recebendo pacotes reais, mas também que diferentes tipos de tráfego são interpretados, persistidos e refletidos corretamente nas estatísticas.
 
 <br>
-<br>
-<br>
-<br>
 
-
-### 6.3 Outras formas de encerrar e filtrar (é opcional para explorar!)
+### 6.3 Outras formas de encerrar e filtrar (Agora é opcional para explorar!)
 
 | Comando | Comportamento |
 |---|---|
@@ -688,13 +693,16 @@ docker compose run --rm analyzer stats --session 1
 docker compose run --rm analyzer stats
 ```
 
+
 **Resultado esperado:**
 
 - `sessions` lista a sessão 1 (`pcap:demo.pcap`, 284 armazenados, 16 ignorados) e a sessão 2 (`iface:eth0`), com início e fim em UTC. Exemplo: [evidencias/02](evidencias/02-sessoes.txt).
 - `stats --session 1` mostra exatamente os números da Etapa 5.
 - `stats`, sem `--session`, soma todas as sessões. O total é maior que o da Etapa 5.
 
+
 **O que comprova:** o banco `data/traffic.db` fica no host e sobrevive ao `--rm`, que remove só o container.
+
 
 ---
 
@@ -710,6 +718,7 @@ docker compose run --rm -T --build quality
 
 **Resultado esperado** (relatório salvo em [quality-report.txt](security/quality-report.txt)), nesta ordem:
 
+
 | Verificação | Saída |
 |---|---|
 | ruff (lint) | `All checks passed!` |
@@ -718,6 +727,7 @@ docker compose run --rm -T --build quality
 | bandit | `No issues identified.` |
 | pip-audit | `No known vulnerabilities found` |
 | Final | `==> All checks passed.` |
+
 
 O script para na primeira falha. O CI no GitHub Actions executa esse mesmo comando a cada push na `main` e em pull requests. Em seguida, faz o build da imagem e a analisa com Trivy: o build falha somente com vulnerabilidade CRITICAL corrigível. Hoje a imagem tem 45 HIGH do Debian, sem correção publicada, e 0 CRITICAL ([trivy-report.txt](security/trivy-report.txt)). A política está em D13, em [decisoes.md](decisoes.md).
 
@@ -757,4 +767,3 @@ Se aparecer `Permission denied`, use `sudo rm -f data/traffic.db`. Quando a past
 | `Not a supported capture file` | O arquivo não é uma captura válida (pcap ou pcapng) | Confira o arquivo; reexporte pelo Wireshark |
 
 ---
-

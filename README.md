@@ -107,6 +107,15 @@ No GitHub Actions, o CI executa o mesmo comando a cada push na `main` e em pull 
 - O container usa `network_mode: host` para enxergar as interfaces do host e declara `NET_RAW` para abrir sockets brutos. Não usa `privileged` e não adiciona `NET_ADMIN`.
 - O processo roda como root dentro do container, com o conjunto padrão de capabilities do Docker.
 
+## Desenvolvimento
+
+- **Ambiente:** Windows 11 com WSL2 (Ubuntu 24.04) e Docker Engine, editando pelo VS Code conectado ao WSL. Ambiente descrito no guia de validação.
+- **Versionamento:** Git e GitHub, com commits por etapa: imagem base → parser e testes → persistência → captura → estatísticas → qualidade e CI → documentação.
+- **Validação:**
+  - 41 testes automatizados;
+  - amostra `samples/demo.pcap` gravada em ambiente controlado, com números conferidos de forma independente (Wireshark/tcpdump);
+  - captura ao vivo validada manualmente ([evidências](docs/evidencias/)).
+
 ## Acerca de limitações
 
 - IPv6 com cabeçalhos de extensão é classificado pelo primeiro cabeçalho (ex.: Hop-by-Hop aparece como `OTHER`).

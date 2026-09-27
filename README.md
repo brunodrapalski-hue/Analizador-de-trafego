@@ -67,7 +67,7 @@ flowchart LR
 | 1º IP de origem por bytes | 4.228.31.150 (589.329) |
 | 1º IP de destino por pacotes | 172.19.40.48 (116) |
 
-As contagens principais da amostra são verificadas por testes automatizados. Os rankings completos e a conferência no Wireshark estão no [Guia de validação](docs/validacao.md).
+As contagens principais da amostra são verificadas por testes automatizados. [Guia de validação](docs/validacao.md).
 
 <br>
 

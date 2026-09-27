@@ -24,6 +24,10 @@ A captura ao vivo varia com o ambiente: ela serve para comprovar o funcionamento
 
 **Objetivo:** identificar o que já está disponível na máquina e instalar somente os componentes necessários para executar e validar a aplicação.
 
+> **Ambiente de referência:** este procedimento foi validado em uma segunda máquina com Windows, partindo de um ambiente sem distribuição Linux e sem Docker Engine previamente configurados.
+>
+> Se a máquina já possuir Ubuntu no WSL2, Git ou Docker Engine, não é necessário recriar o ambiente. As próximas etapas verificam o estado atual da máquina e permitem avançar sempre que os pré-requisitos já estiverem atendidos.
+
 A preparação do WSL2 e do Docker Engine é necessária apenas uma vez.
 
 <br>
@@ -59,39 +63,62 @@ Se o Ubuntu 24.04 não estiver listado ou o WSL ainda não estiver disponível, 
 
 <br>
 
-### 1.2 Instalar o WSL2 com Ubuntu 24.04, se necessário
+### 1.2 Instalar e provisionar o Ubuntu 24.04, se necessário
 
-Esta etapa só é necessária se o Ubuntu 24.04 no WSL2 não tiver sido identificado na etapa anterior.
+Esta etapa só é necessária se o Ubuntu 24.04 não tiver sido identificado na verificação anterior.
 
-Abra o **PowerShell como administrador** e execute:
+No **PowerShell como administrador**, execute:
 
 ```powershell
 wsl --install -d Ubuntu-24.04
 ```
 
-<br>
+O comando baixa, instala e registra o Ubuntu 24.04 no WSL2. Ao concluir a instalação, o próprio processo inicia o primeiro provisionamento da distribuição na mesma janela do terminal.
 
-**Resultado esperado:** mensagens de download e instalação. Dependendo do estado do Windows, pode ser solicitado reiniciar o computador.
-
-> Se aparecer um erro relacionado à virtualização, verifique se o recurso de virtualização está habilitado na BIOS/UEFI do dispositivo e repita o comando.
-
-<br>
-
-### 1.3 Primeiro acesso ao Ubuntu
-
-Após a instalação, abra `Ubuntu-24.04` pelo menu Iniciar.
-
-Na primeira execução, o Ubuntu solicitará a criação de um nome de usuário e uma senha. Esses dados pertencem somente ao ambiente Linux e a senha será utilizada posteriormente pelo `sudo`.
-
-<br>
-
-**Resultado esperado:** um prompt semelhante a:
+Uma sequência semelhante à abaixo será exibida:
 
 ```text
-usuario@computador:~$
+Baixando: Ubuntu 24.04 LTS
+Instalando: Ubuntu 24.04 LTS
+Distribuição instalada com êxito.
+Iniciando Ubuntu-24.04...
+Provisioning the new WSL instance Ubuntu-24.04
+This might take a while...
+Create a default Unix user account:
 ```
 
-> A partir daqui, os comandos da aplicação são executados no **terminal do Ubuntu**, exceto quando o guia indicar explicitamente o PowerShell.
+Quando aparecer:
+
+```text
+Create a default Unix user account:
+```
+
+crie o usuário Linux. Para manter os exemplos deste guia padronizados, pode ser utilizado:
+
+```text
+desafio
+```
+
+Em seguida, defina uma senha local simples:
+
+```text
+New password: desafio
+Retype new password: desafio
+```
+> A senha não aparece na tela enquanto é digitada. Esse comportamento é normal no Linux.
+
+Após a confirmação, deve aparecer:
+
+```text
+passwd: password updated successfully
+To run a command as administrator (user "root"), use "sudo <command>".
+```
+
+Ao final do provisionamento, o ambiente Ubuntu estará pronto para continuar o guia.
+
+> Nesse momento feche o PowerSheel e na barra de pesquisa procure pelo aplicativo `Ubuntu` deve aparece **Ubuntu-24.04**. Execute-o para continuar o provisionamento. 
+
+**> A partir deste ponto, os comandos do projeto são executados no ambiente Ubuntu**, exceto quando o guia indicar explicitamente o PowerShell.
 
 <br>
 
@@ -114,10 +141,9 @@ systemctl is-active docker
 
 | Comando | Resultado esperado |
 |---|---|
-| `git --version` | Exibe a versão instalada do Git |
+| `git --version` | 2.43.0 |
 | `docker --version` | Exibe a versão instalada do Docker |
 | `docker compose version` | Exibe a versão do Docker Compose |
-| `systemctl is-active docker` | `active` |
 
 Se os quatro comandos responderem corretamente, não é necessário reinstalar Git ou Docker Engine. Avance para a [Etapa 2](#etapa-2--verificar-os-pré-requisitos).
 
@@ -126,6 +152,10 @@ Se os quatro comandos responderem corretamente, não é necessário reinstalar G
 <br>
 
 ### 1.5 Instalar Git e Docker Engine no Ubuntu, se necessário
+
+Os comandos abaixo utilizam `sudo` porque algumas etapas exigem privilégio administrativo dentro do Ubuntu. Na primeira execução de um comando com `sudo`, o terminal solicitará a senha do usuário Linux criado durante o provisionamento, que é: `desafio`
+
+Digite a senha definida anteriormente e pressione Enter. A senha não é exibida na tela enquanto é digitada. Esse comportamento é normal no Linux. Depois da autenticação, o sudo pode manter a autorização por alguns minutos, então a senha normalmente não é solicitada novamente em cada comando.
 
 No **terminal do Ubuntu**, execute:
 
@@ -146,33 +176,55 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 
 ### 1.6 Permitir o uso do Docker sem `sudo`
 
-Adicione o usuário atual ao grupo `docker`:
+Por padrão, o Docker pode exigir privilégios administrativos para ser utilizado. Adicione o usuário atual do Ubuntu ao grupo `docker`:
+
+No **terminal do Ubuntu**, execute:
 
 ```bash
 sudo usermod -aG docker $USER
 ```
 
-Para aplicar a alteração, encerre o WSL. No **PowerShell**, execute:
+> O comando normalmente não exibe nenhuma mensagem quando é concluído com sucesso. A nova associação ao grupo só será aplicada em uma nova sessão do usuário. 
+
+Para reiniciar o ambiente WSL, primeiro saia do terminal Ubuntu:
+
+```bash
+exit
+```
+
+Agora, no **PowerShell do Windows**, execute:
 
 ```powershell
 wsl --shutdown
 ```
+<br>
 
-Abra novamente o Ubuntu e confira:
+> `wsl --shutdown` é um comando do Windows e deve ser executado no PowerShell ou Prompt de Comando, não dentro do Ubuntu.
+
+Depois, inicie novamente o Ubuntu. Abrar `Ubuntu-24.04` pelo menu Iniciar do windows. 
+
+> Na próxima inicialização do Terminal do Ubuntu, aguarde um pouco. O Terminal recarregá.
+
+No **terminal do Ubuntu**, confira:
 
 ```bash
 groups
 systemctl is-active docker
 ```
 
-<br>
-
 **Resultado esperado:**
 
-- `docker` aparece entre os grupos do usuário;
+- `docker` aparece na lista de grupos do usuário;
 - o serviço Docker responde `active`.
 
-A preparação inicial do Windows está concluída.
+Por exemplo:
+
+```text
+desafio adm cdrom sudo dip plugdev users docker
+active
+```
+
+A preparação do inicial do Windows está concluída.
 
 ---
 
@@ -203,81 +255,16 @@ docker run --rm hello-world
 |---|---|
 | `git --version` | `git version 2.x.x` |
 | `docker --version` | `Docker version 2x.x.x, build ...` |
-| `docker compose version` | `Docker Compose version v2.x.x` |
-| `docker run --rm hello-world` | Contém `Hello from Docker!` |
+| `docker compose version` | `Docker Compose version v5.x.x` |
+| `Hello from Docker!` |
 
-Se os quatro comandos forem executados corretamente, o ambiente está pronto para importar o projeto.
-
-> As dependências Python da aplicação não precisam ser instaladas no Ubuntu. Elas fazem parte das imagens Docker utilizadas pelo projeto.
+O ambiente está pronto para importar o projeto.
 
 ---
 
 <br>
-
-## Etapa 3 — Importação do projeto
-
 <br>
 <br>
-<br>
-<br>
-<br>
-<br>
-
-
-
-
-
-
-
-### 1.5 Usar o Docker sem `sudo`
-
-```bash
-sudo usermod -aG docker $USER
-```
-
-Em seguida, reinicie o WSL para aplicar a permissão. No **PowerShell**:
-
-```powershell
-wsl --shutdown
-```
-
-Agora no **Terminal do Ubuntu** novamente e confira:
-
-```bash
-groups
-systemctl is-active docker
-```
-<br>
-
-**Resultado esperado:** `docker` aparece na lista de grupos, e o serviço responde `active`.
-
----
-<br>
-
-## Etapa 2 — Verificar os pré-requisitos
-
-Vamos confirmar que Git, Docker e Docker Compose funcionam. Fique tranquilo que toda as bibliotecas do projeto estarão dentro da imagem Docker na etapa de importação.
-
-```bash
-git --version
-docker --version
-docker compose version
-docker run --rm hello-world
-```
-
-<br>
-
-**Resultado esperado:**
-
-| Comando | Saída (as versões podem variar) |
-|---|---|
-| `git --version` | `git version 2.x.x` |
-| `docker --version` | `Docker version 2x.x.x, build ...` |
-| `docker compose version` | `Docker Compose version v2.x.x` |
-| `docker run --rm hello-world` | Contém `Hello from Docker!` |
-
-
----
 <br>
 
 ## Etapa 3 — Importação do projeto

@@ -22,9 +22,15 @@ Cada decisão registra a escolha, o motivo e o custo aceito.
 
 ### D1 — Linux (ou WSL2) com Docker
 
-- **Decisão:** executar em Linux; no Windows, dentro do WSL2.
-- **Por quê:** a captura precisa das interfaces de rede do host. No Docker Desktop, os containers rodam em uma VM e não enxergam as placas físicas.
-- **Custo:** no WSL2, a captura ocorre na interface virtual do WSL (normalmente `eth0`). Ela recebe o tráfego gerado no próprio WSL, não o de todo o Windows.
+- **Decisão:** executar a aplicação em Linux. No Windows, utilizar WSL2 com Ubuntu 24.04 e Docker Engine instalado dentro desse ambiente.
+
+- **Por quê:** a captura ao vivo precisa enxergar uma interface de rede do ambiente em que o tráfego de teste é gerado. Com o Docker Engine executado dentro do WSL2, o container utiliza a rede desse Linux e consegue capturar na interface `eth0` do WSL.
+
+  -Essa escolha mantém geração de tráfego, identificação da interface (um ponto que foi exigido pelo desafio = "uma interface de rede especificada".), execução do Docker e captura no mesmo contexto de rede. Durante a validação, podemos identificar a interface com `ip -br link`, iniciar a captura e gerar tráfego no próprio Ubuntu, tornando mais clara a relação entre o tráfego produzido e os pacotes observados pela aplicação.
+  -Também permite manter o guia concentrado em um único terminal Linux. Comandos como `ip -br link`, `ping -c`, `ls` e `rm -f` podem ser utilizados de forma consistente, sem manter instruções equivalentes para PowerShell e Linux.
+  - O Docker Desktop adicionaria outra camada entre o Windows e o ambiente Linux onde os containers são executados. Isso tornaria menos direta a relação entre a interface escolhida, o tráfego gerado e aquilo que o container consegue observar. A demonstração da captura ao vivo, requisito principal do desafio ficaria mais difícil de reproduzir e explicar.
+
+- **Custo:** é necessário preparar o WSL2 e instalar o Docker Engine dentro do Ubuntu. Além disso, a captura realizada nesse ambiente representa o tráfego do próprio WSL, não todo o tráfego gerado pelo Windows.
 
 ### D2 — Python 3.13 e Scapy 2.7.0
 

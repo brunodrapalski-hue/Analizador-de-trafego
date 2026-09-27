@@ -28,6 +28,7 @@ Passo a passo para preparar o ambiente, executar a aplicação e conferir o resu
 | Python + Docker | Python 3.13, Dockerfile multi-stage e Docker Compose |
 | Documentação e justificativas | Este README e a pasta DOCS |
 
+<br>
 
 ## Como funciona
 
@@ -45,6 +46,7 @@ flowchart LR
 - **Gravação:** em lotes (padrão: 100 pacotes por transação). Cada captura gera uma sessão no banco.
 - **Payload:** o conteúdo dos pacotes não é gravado.
 
+<br>
 
 ## Resultado de referência
 
@@ -61,6 +63,7 @@ flowchart LR
 
 As contagens principais da amostra são verificadas por testes automatizados. Os rankings completos e a conferência no Wireshark estão no [Guia de validação](docs/validacao.md).
 
+<br>
 
 ## Referência de comandos
 
@@ -73,6 +76,7 @@ As contagens principais da amostra são verificadas por testes automatizados. Os
 
 Todos os comandos são executados com `docker compose run --rm analyzer <comando>`.
 
+<br>
 
 | Opção (só captura ao vivo) | Função |
 |---|---|
@@ -88,6 +92,7 @@ Todos os comandos são executados com `docker compose run --rm analyzer <comando
 
 O banco fica em `./data` (volume) e persiste entre execuções. Uma interface inexistente gera um erro que lista as interfaces disponíveis.
 
+<br>
 
 ## Qualidade
 
@@ -111,6 +116,7 @@ Esse comando executa, na sua máquina, a mesma verificação de qualidade usada 
 
 No GitHub Actions, o CI executa o mesmo comando a cada push na `main` e em pull requests. Em seguida, faz o build da imagem de execução e a analisa com Trivy. O build falha se houver vulnerabilidade CRITICAL com correção disponível. Os achados HIGH do sistema base ficam registrados em [relatório](docs/security/trivy-report.txt).
 
+<br>
 
 ## Privilégios e uso responsável
 
@@ -119,6 +125,7 @@ No GitHub Actions, o CI executa o mesmo comando a cada push na `main` e em pull 
 - O container usa `network_mode: host` para enxergar as interfaces do host e declara `NET_RAW` para abrir sockets brutos. Não usa `privileged` e não adiciona `NET_ADMIN`.
 - O processo roda como root dentro do container, com o conjunto padrão de capabilities do Docker.
 
+<br>
 
 ## Desenvolvimento
 
@@ -126,6 +133,7 @@ No GitHub Actions, o CI executa o mesmo comando a cada push na `main` e em pull 
 - **Versionamento:** Git e GitHub, com commits por etapas.
 - **Validação:**
 
+<br>
 
 ## Acerca de limitações
 
@@ -134,6 +142,7 @@ No GitHub Actions, o CI executa o mesmo comando a cada push na `main` e em pull 
 - Os resultados da captura ao vivo dependem da interface e do tráfego do ambiente.
 - No WSL2, a captura vê o tráfego do próprio WSL, não o de todo o Windows.
 
+<br>
 
 ## Acerca da documentação
 

@@ -267,26 +267,32 @@ O ambiente está pronto para importar o projeto.
 <br>
 <br>
 
-## Etapa 3 — Importação do projeto
+## Etapa 3 — Importar o projeto
 
-Iremos agora clonar o repositório. Por ser público não necessitará de nenhuma autenticação.
+**Objetivo:** obter uma cópia do repositório do github e validar que os arquivos necessários para a execução estão disponíveis.
+
+Continue no **mesmo terminal do Ubuntu** utilizado na etapa anterior.
+
+### 3.1 Confirmar o diretório de trabalho
+
+Vá para a pasta pessoal do usuário linux: desafio
 
 ```bash
-cd ~
-git clone https://github.com/brunodrapalski-hue/Analizador-de-trafego.git
-cd Analizador-de-trafego
-ls
-```
+cd
+pwd
+---
 
-**Resultado esperado:** o `ls` lista, entre outros, `app/`, `docs/`, `samples/`, `tests/`, `Dockerfile`, `docker-compose.yml` e `README.md`.
-
-> No WSL2, clone dentro da pasta do Linux (`~`), e não em `/mnt/c/...`. O acesso a arquivos do Windows pelo WSL é mais lento.
-
-**Atenção!** Todos os comandos das próximas etapas serão executados nesta pasta, `cd ~/Analizador-de-trafego`.
 
 ---
 
+
 <br>
+
+
+
+
+
+
 
 ## Etapa 4 — Construir a imagem
 

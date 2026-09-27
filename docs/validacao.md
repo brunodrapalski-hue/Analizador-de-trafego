@@ -436,15 +436,17 @@ docker compose run --rm analyzer capture --pcap samples/demo.pcap
 
 ## Etapa 6 — Validar a captura ao vivo
 
-Com o ambiente tudo validado, vamos agora a entrega principal do desafio que é capturar pacotes em tempo real a partir de uma interface de rede especificada. Na etapa anterior, o arquivo `samples/demo.pcap` foi utilizado como uma entrada conhecida para validar construção, o processamento, a persistência e as estatísticas. 
+Com o ambiente já validado, vamos agora ao requisito principal do desafio: capturar pacotes em tempo real a partir de uma interface de rede especificada.
 
-Agora a origem dos pacotes será a **interface de rede real do ambiente**. A aplicação utilizará o Scapy para escutar essa interface, processar os pacotes recebidos, armazenar no SQLite e apresentar as estatísticas ao final da captura. No WSL2, o tráfego será gerado dentro do próprio Ubuntu. Como o container conseguira observar a interface de rede desse ambiente Linux.
+Na etapa anterior, o arquivo `samples/demo.pcap` foi utilizado como uma entrada conhecida para validar o processamento, a persistência e a geração das estatísticas de forma reproduzível. Agora, a origem dos pacotes será uma **interface de rede real do ambiente**. A aplicação utilizará o Scapy para escutar essa interface, processar os pacotes recebidos, armazenar seus metadados no SQLite e apresentar as estatísticas ao final da captura.
+
+O tráfego será gerado dentro do próprio Ubuntu. Como o container ele consegue observar as interfaces de rede desse ambiente Linux e realizar a captura diretamente na interface selecionada.
 
 <br>
 
 ### 6.1 Identificar a interface de rede
 
-Continue no **terminal do Ubuntu** e execute:
+Continue no **terminal do Ubuntu** dentro (cd ~/Analizador-de-trafego) e e execute:
 
 ```bash
 ip -br link

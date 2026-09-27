@@ -135,6 +135,7 @@ No GitHub Actions, o CI executa o mesmo comando a cada push na `main` e em pull 
 
 - **Ambiente:** Windows 11 com WSL2 (Ubuntu 24.04) e Docker Engine, editando pelo VS Code conectado ao WSL. Ambiente descrito.
 - **Versionamento:** Git e GitHub, com commits por etapas.
+- **Homologações**: 3 computadores com cenários distintos, justamente para elaboração das validações.
 
 <br>
 

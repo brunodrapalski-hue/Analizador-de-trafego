@@ -28,9 +28,9 @@ Cada decisão registra a escolha, o motivo e o custo aceito.
 
 ### D2 — Python 3.13 e Scapy 2.7.0
 
-- **Decisão:** imagem `python:3.13-slim` e dependências com versão fixada em `requirements*.txt`.
-- **Por quê:** Python é a linguagem preferencial do desafio e Scapy é a biblioteca sugerida. A versão 3.13 é a mais recente que o Scapy 2.7.0 declara como suportada.
-- **Custo:** não usar a versão mais recente do Python.
+- **Decisão:** imagem `python:3.13-slim`.
+- **Por quê:** Python é a linguagem preferencial do desafio e Scapy é a biblioteca sugerida.
+- **Custo:** não usei a versão mais recente do Python.
 
 ### D3 — Captura ao vivo e leitura de `.pcap`
 
@@ -57,7 +57,7 @@ Cada decisão registra a escolha, o motivo e o custo aceito.
 
 - **Decisão:** SQLite (biblioteca padrão do Python), arquivo `data/traffic.db` em volume.
 - **Por quê:** não exige serviço de banco, usuário nem senha, e oferece SQL, transações e chaves estrangeiras. Detalhes em [banco-de-dados.md](banco-de-dados.md).
-- **Custo:** um processo gravando por vez. Para vários sensores simultâneos, PostgreSQL seria a evolução, com adaptação de `storage.py` e `stats.py`.
+- **Custo:** um processo gravando por vez. Para vários sensores simultâneos, PostgreSQL seria a evolução ideal, com adaptação de `storage.py` e `stats.py`.
 
 ### D6 — IPv4 e IPv6; não-IP descartado e contado
 

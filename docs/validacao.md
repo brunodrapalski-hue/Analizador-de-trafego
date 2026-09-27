@@ -269,26 +269,104 @@ O ambiente está pronto para importar o projeto.
 
 ## Etapa 3 — Importar o projeto
 
-**Objetivo:** obter uma cópia do repositório do github e validar que os arquivos necessários para a execução estão disponíveis.
+**Objetivo:** Vamos importar uma cópia local do projeto no github e validar que os arquivos necessários estão disponíveis.
 
 Continue no **mesmo terminal do Ubuntu** utilizado na etapa anterior.
 
+<br>
+
 ### 3.1 Confirmar o diretório de trabalho
 
-Vá para a pasta pessoal do usuário linux: desafio
+Vá para a pasta pessoal do usuário Linux:
 
 ```bash
 cd
+```
+
+Confirme o diretório atual:
+
+```bash
 pwd
----
+```
 
+**Resultado esperado:** um caminho semelhante a:
 
----
+```text
+/home/usuario
+```
 
+> No WSL2, mantenha o projeto dentro do sistema de arquivos Linux, e não em diretórios montados do Windows como `/mnt/c/...`. Isso mantém Git, Docker e os comandos de validação no mesmo ambiente Linux utilizado pelo projeto.
 
 <br>
 
+### 3.2 Clonar o repositório
 
+Execute agora:
+
+```bash
+git clone https://github.com/brunodrapalski-hue/Analizador-de-trafego.git
+```
+
+Como o repositório é público, não é necessária autenticação para essa operação.
+
+**Resultado esperado:** o Git cria a pasta `Analizador-de-trafego` e finaliza com mensagens semelhantes a:
+
+```text
+Cloning into 'Analizador-de-trafego'...
+Receiving objects: 100% (...)
+Resolving deltas: 100% (...)
+```
+
+> O clone precisa ser realizado apenas uma vez. Se a pasta `Analizador-de-trafego` já existir porque o projeto foi clonado anteriormente, não execute `git clone` novamente. Prossiga para a próxima etapa.
+
+<br>
+
+### 3.3 Entrar no diretório do projeto
+
+Execute:
+
+```bash
+cd Analizador-de-trafego
+pwd
+```
+
+**Resultado esperado:** o caminho termina em:
+
+```text
+/Analizador-de-trafego
+```
+
+<br>
+
+### 3.4 Conferir os arquivos
+
+Execute:
+
+```bash
+ls
+```
+
+**Resultado esperado:** serão listados, entre outros:
+
+```text
+Dockerfile
+README.md
+app
+docker-compose.yml
+docs
+pyproject.toml
+requirements-dev.txt
+requirements.txt
+samples
+scripts
+tests
+```
+
+> **A partir deste ponto, todos os comandos do projeto devem ser executados dentro de `~/Analizador-de-trafego`**, salvo quando o guia indicar explicitamente outro diretório.
+
+---
+
+<br>
 
 
 

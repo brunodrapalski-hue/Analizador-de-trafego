@@ -49,7 +49,7 @@ flowchart LR
 
 - **Mesmo pipeline:** a captura ao vivo e a leitura de `.pcap` passam pelo mesmo parser, pela mesma gravação e pelas mesmas consultas. O `.pcap` fornece uma entrada reproduzível.
 - **Frames não-IP:** frames sem IP (ex.: ARP) não são armazenados, mas entram no total capturado.
-- **Gravação:** em lotes (padrão: 100 pacotes por transação). Cada captura gera uma sessão no banco.
+- **Gravação:** em lotes. Cada captura gera uma sessão no banco.
 - **Payload:** o conteúdo dos pacotes não é gravado.
 
 <br>
@@ -105,9 +105,7 @@ O banco fica em `./data` (volume) e persiste entre execuções. Uma interface in
 ```bash
 docker compose run --rm -T --build quality
 ```
-
-Esse comando executa, na sua máquina, a mesma verificação de qualidade usada no CI. Ela roda dentro de uma imagem de testes, separada da imagem de execução, e passa por quatro ferramentas, nesta ordem:
-
+Durante o desenvolvimento, concentrei as principais verificações do projeto em um único comando para tornar a validação simples e repetível. A intenção foi ter um ponto de verificação antes de considerar uma alteração concluída, evitando depender da execução manual de cada ferramenta separadamente. Mantendo uma referência comum entre desenvolvimento e validação automatizada do repositório. Esse comando executa, o mesmo quality gate utilizado pelo CI. Ela roda dentro de uma imagem de testes, separada da imagem de execução, e passa por quatro ferramentas, nesta ordem:
 
 | Ferramenta | O que verifica |
 |---|---|

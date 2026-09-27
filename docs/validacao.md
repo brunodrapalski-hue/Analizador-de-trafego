@@ -449,29 +449,7 @@ Continue no **terminal do Ubuntu** e execute:
 ```bash
 ip -br link
 ```
-
-
-
-
-
-
-
-
-
-
-## Etapa 6 — Hora de Iniciar a Captura ao vivo
-
-**Objetivo:** comprovar a captura em uma interface real do ambiente.
-
-<br>
-
-### 6.1 Identificar a interface
-
-```bash
-ip -br link
-```
-
-**Resultado esperado:** a lista de interfaces. No WSL2, a principal é `eth0`, com estado `UP`:
+**Resultado esperado:** a lista de interfaces de rede disponíveis na sua máquina. O nome da interface principal varia conforme o ambiente e a aplicação escolherá.
 
 ```text
 lo               UNKNOWN        00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP>
@@ -479,34 +457,213 @@ eth0             UP             00:15:5d:xx:xx:xx <BROADCAST,MULTICAST,UP,LOWER_
 docker0          DOWN           02:42:xx:xx:xx:xx <NO-CARRIER,BROADCAST,MULTICAST,UP>
 ```
 
-Em Linux nativo, o nome costuma ser outro (ex.: `enp0s3`, `wlp2s0`). Nos comandos abaixo, troque `eth0` pelo nome da sua interface.
-
 <br>
 
 ### 6.2 Capturar por 30 segundos gerando tráfego
 
-Nesta etapa a proposta é realizar a captura e geração de trafego através de dois terminais **Ubuntu** (abertos em- cd ~/Analizador-de-trafego). Deixe ambos os terminais abertos.
+Nesta etapa, a captura ao vivo será validada em dois cenários.
 
-No terminal 1 execute:
+A primeira execução utiliza tráfego simples e tem como objetivo confirmar rapidamente que a aplicação consegue capturar pacotes da interface, armazenar os metadados e gerar as estatísticas ao final da sessão. Na segunda execução, pensei em utilizar um gerador de tráfego controlado para disparar diferentes protocolos durante a captura. Isso permite observar como a distribuição apresentada pela aplicação muda quando a entrada se torna mais variada.
+
+As duas capturas utilizam uma janela de **30 segundos** apenas para manter a validação curta e previsível. A duração pode ser alterada por `--duration`, a captura pode ser encerrada por quantidade de frames com `--count` ou manualmente com `Ctrl+C`.
+
+**Nesse momento, abra um segundo terminal Ubuntu, deixe-os abertos já no diretório correto:**
 
 ```bash
-docker compose run --rm analyzer capture --iface eth0 --duration 30
+cd ~/Analizador-de-trafego
 ```
 
-**Resultado esperado:** a linha `INFO: Capturing on eth0 (press Ctrl+C to stop)...`, e o terminal fica aguardando.
+<br>
 
-Enquanto isso, no terminal 2:
+#### 6.2.1 Validação básica da captura
+
+O primeiro teste utiliza apenas alguns comandos de rede comuns. A intenção é validar a estrutura da captura ao vivo antes de gerar um conjunto maior e mais controlado de pacotes.
+
+No **Terminal 1**, inicie uma captura de 30 segundos:
+
+```bash
+docker compose run --rm analyzer capture --iface auto --duration 30
+```
+
+**Resultado esperado:** a aplicação identifica automaticamente a interface utilizada pela rota padrão e inicia a captura:
+
+```text
+INFO: Interface detected automatically: eth0
+INFO: Capturing on eth0 (press Ctrl+C to stop)...
+```
+
+> O nome da interface varia conforme a máquina e a configuração de rede.
+
+Enquanto a captura estiver ativa, execute no **Terminal 2**:
 
 ```bash
 ping -c 10 1.1.1.1
 curl -s -o /dev/null https://github.com && echo OK
 ```
 
-**Resultado esperado no terminal 1:** depois de 30 s, a captura termina sozinha, mostra `INFO: Session 2 finished: ...` e exibe as tabelas no mesmo formato da Etapa 5, com **ICMP** e os protocolos. Os números variam a cada execução. Exemplo real: [evidencias/03](evidencias/03-captura-ao-vivo.txt).
+O `ping` produz tráfego ICMP, enquanto a requisição ao GitHub produz tráfego associado a uma conexão TCP/HTTPS.
+
+Esse primeiro cenário é propositalmente simples. O objetivo não é preencher todas as categorias do relatório, mas confirmar que:
+
+- a interface foi detectada;
+- os pacotes estão sendo recebidos;
+- os metadados estão sendo gravados;
+- a sessão termina corretamente;
+- as estatísticas são calculadas e exibidas.
+
+Após 30 segundos, o **Terminal 1** encerra a captura automaticamente e apresenta uma mensagem semelhante a:
+
+```text
+INFO: Session N finished: ... packets stored, ... non-IP packets ignored.
+```
+
+Em seguida, são exibidas as estatísticas da sessão.
+
+Além do tráfego gerado manualmente, outros protocolos podem aparecer porque a interface continua recebendo o tráfego normal do sistema.
 
 <br>
 
-### 6.3 Outras formas de encerrar e filtrar (é opcional para explorar)
+#### 6.2.2 Validação ampliada com tráfego controlado
+
+Depois de confirmar o funcionamento básico, execute uma segunda captura.
+
+Nesta validação, a intenção é gerar deliberadamente diferentes categorias de tráfego para observar como elas são classificadas pela aplicação e como o resultado se diferencia da primeira execução.
+
+No **Terminal 1**, inicie novamente uma captura de 30 segundos:
+
+```bash
+docker compose run --rm analyzer capture --iface auto --duration 30
+```
+
+Assim que a captura começar, **copie o bloco abaixo inteiro** e execute no **Terminal 2**.
+
+O script utiliza o Scapy e as bibliotecas Python já presentes. Durante aproximadamente **25 segundos**, ele gera o tráfego representando as categorias tratadas pela aplicação.
+
+O gerador utiliza 25 segundos, e não 30, para deixar uma pequena margem entre o início da captura no Terminal 1 e a execução do bloco no Terminal 2.
+
+```bash
+docker compose run --rm -T --entrypoint python analyzer - <<'EOF'
+import logging
+import socket
+import time
+
+logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+
+from scapy.all import (
+    ARP,
+    ICMP,
+    IP,
+    Ether,
+    ICMPv6EchoRequest,
+    IPv6,
+    conf,
+    send,
+    sendp,
+)
+
+DESTINO = "1.1.1.1"
+DURACAO = 25
+
+iface, _, gateway = conf.route.route(DESTINO)
+
+print(f"Gerando tráfego por {DURACAO} s na interface {iface}...")
+
+fim = time.time() + DURACAO
+rodadas = 0
+
+while time.time() < fim:
+    send(IP(dst=DESTINO) / ICMP(), verbose=0)
+
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
+        udp.sendto(b"teste", (DESTINO, 9999))
+
+    try:
+        socket.create_connection((DESTINO, 443), timeout=2).close()
+    except OSError:
+        pass
+
+    sendp(
+        Ether(dst="33:33:00:00:00:01")
+        / IPv6(dst="ff02::1")
+        / ICMPv6EchoRequest(),
+        iface=iface,
+        verbose=0,
+    )
+
+    send(IP(dst=DESTINO, proto=47) / b"teste", verbose=0)
+
+    if gateway != "0.0.0.0":
+        sendp(
+            Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=gateway),
+            iface=iface,
+            verbose=0,
+        )
+
+    rodadas += 1
+    time.sleep(1)
+
+print(
+    f"Concluído: {rodadas} rodadas de "
+    "ICMP, UDP, TCP, ICMPv6, OTHER (GRE) e ARP."
+)
+EOF
+```
+
+O tráfego gerado foi escolhido para exercitar as diferentes categorias reconhecidas pela aplicação:
+
+| Tipo | Tráfego gerado | Onde aparece |
+|---|---|---|
+| ICMP | pacote IPv4 ICMP para `1.1.1.1` | `ICMP` |
+| UDP | datagrama UDP para `1.1.1.1:9999` | `UDP` |
+| TCP | tentativa de conexão com `1.1.1.1:443` | `TCP` |
+| ICMPv6 | ICMPv6 para `ff02::1` | `ICMPv6` |
+| OTHER | pacote IP com protocolo 47 (GRE) | `OTHER` |
+| ARP | consulta ARP ao gateway | `Non-IP packets ignored` |
+
+**Resultado esperado no Terminal 2:** uma saída semelhante a:
+
+```text
+Gerando tráfego por 25 s na interface eth0...
+Concluído: 23 rodadas de ICMP, UDP, TCP, ICMPv6, OTHER (GRE) e ARP.
+```
+
+O nome da interface e a quantidade de rodadas podem variar.
+
+Após os 30 segundos, o **Terminal 1** encerra a captura e apresenta novamente as estatísticas da sessão.
+
+Nesta segunda execução, a tabela `Packets by protocol` deve permitir observar uma variedade maior de categorias, incluindo **TCP, UDP, ICMP, ICMPv6 e OTHER**. Os pacotes ARP são contabilizados no resumo como `Non-IP packets ignored`.
+
+<br>
+
+#### Comparar as duas validações
+
+As duas execuções criam sessões independentes no banco de dados.
+
+A primeira demonstra o comportamento da aplicação com uma pequena quantidade de tráfego gerado manualmente. A segunda utiliza uma entrada mais controlada e diversificada para exercitar as categorias de protocolo tratadas pelo parser.
+
+Para visualizar as sessões criadas:
+
+```bash
+docker compose run --rm analyzer sessions
+```
+
+Os resultados podem ser consultados individualmente utilizando o ID de cada sessão:
+
+```bash
+docker compose run --rm analyzer stats --session N
+```
+
+Ao comparar as duas execuções, espera-se que a segunda apresente uma distribuição de protocolos mais diversificada. Os valores absolutos não precisam ser iguais entre máquinas ou execuções, pois o tráfego normal do ambiente continua sendo capturado junto com o tráfego gerado pelo teste.
+
+Essa comparação permite validar não apenas que a aplicação está recebendo pacotes reais, mas também que diferentes tipos de tráfego são interpretados, persistidos e refletidos corretamente nas estatísticas.
+
+<br>
+<br>
+<br>
+<br>
+
+
+### 6.3 Outras formas de encerrar e filtrar (é opcional para explorar!)
 
 | Comando | Comportamento |
 |---|---|

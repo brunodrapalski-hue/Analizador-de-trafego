@@ -3,9 +3,15 @@
 
 [![CI](https://github.com/brunodrapalski-hue/Analizador-de-trafego/actions/workflows/ci.yml/badge.svg)](https://github.com/brunodrapalski-hue/Analizador-de-trafego/actions/workflows/ci.yml)
 
-Aplicação em Python, executada em Docker.
+Aplicação em python executada em docker para captura, persistência e análise básica de tráfego de rede.
 
-Uma aplicação para a análise de tráfego com a responsabilidade de capturar pacotes de uma interface de rede e exibir estatísticas básicas.
+O projeto foi desenvolvido tendo como requisito principal a captura real de pacotes de uma interface de rede, seguida da extração, armazenamento em banco de dados e geração das estatísticas previstas no desafio. Para manter um ambiente Linux consistente durante o desenvolvimento em Windows, utilizei o WSL2 com Ubuntu 24.04 e o Docker Engine executado dentro desse ambiente. O VS Code foi conectado diretamente ao WSL, e o terminal Linux foi utilizado para Git, Docker e execução da aplicação. O container consegue acessar as interfaces de rede do WSL e realizar a captura ao vivo pela interface informada à aplicação.
+
+Além da captura ao vivo, optei por inclui o processamento de uma amostra `.pcap` como recurso complementar de validação. Ela percorre a mesma cadeia de parsing, persistência e geração de estatísticas utilizada pelos pacotes capturados em tempo real, permitindo reproduzir esse processamento com uma entrada conhecida e comparar os resultados sem depender do tráfego existente naquele momento. Nessa implementação optei por separar a captura, interpretação dos pacotes, persistência, consultas e apresentação dos resultados. As decisões técnicas e as limitações encontradas durante o desenvolvimento documentadas para facilitar a análise e a validação da solução.
+
+Centralizei essa entrega no GitHub, mantendo código, documentação e histórico de alterações no mesmo repositório. Essa organização facilitou os ajustes realizados durante o desenvolvimento e manteve rastreabilidade das mudanças. A documentação foi separada por finalidade: execução e validação, arquitetura, banco de dados, decisões técnicas e evidências, para facilar a consulta e atualização de forma independente.
+
+A partir de repositório, conseguimos entender a estrutura, preparar o ambiente, executar a aplicação, validar seu comportamento e consultar as decisões adotadas.
 
 <br>
 
@@ -129,9 +135,8 @@ No GitHub Actions, o CI executa o mesmo comando a cada push na `main` e em pull 
 
 ## Desenvolvimento
 
-- **Ambiente:** Windows 11 com WSL2 (Ubuntu 24.04) e Docker Engine, editando pelo VS Code conectado ao WSL. Ambiente descrito no guia de validação.
+- **Ambiente:** Windows 11 com WSL2 (Ubuntu 24.04) e Docker Engine, editando pelo VS Code conectado ao WSL. Ambiente descrito.
 - **Versionamento:** Git e GitHub, com commits por etapas.
-- **Validação:**
 
 <br>
 

@@ -2,7 +2,7 @@
 
 Passo a passo para preparar o ambiente, executar a aplicação e conferir o resultado de cada comando. Siga as etapas na ordem. Cada uma traz o objetivo, os comandos e o **resultado esperado**. 
 
-A referência numérica é o arquivo `samples/demo.pcap`, cujo resultado é sempre o mesmo. A captura ao vivo varia com o ambiente: ela serve para comprovar que a captura, não para comparar números.
+A referência numérica é o arquivo `samples/demo.pcap`, cujo resultado é sempre o mesmo. A captura ao vivo varia com o ambiente: ela serve para comprovar o funcionamento da captura, não para comparar números.
 
 ## Por onde começar
 

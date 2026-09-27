@@ -12,7 +12,8 @@ from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.l2 import ARP, Ether
 from scapy.utils import wrpcap
 
-from app.capture import capture_live, read_pcap
+from app import capture
+from app.capture import capture_live, read_pcap, resolve_interface
 from app.cli import build_parser, main
 from app.storage import Storage
 
@@ -166,3 +167,30 @@ def test_cli_invalid_batch_size_returns_error(
     )
 
     assert exit_code == 1
+
+
+def test_resolve_interface_keeps_explicit_name():
+    """Um nome informado explicitamente é usado sem alteração."""
+    assert resolve_interface("eth0") == "eth0"
+
+
+def test_resolve_interface_auto_uses_default_route(monkeypatch):
+    """Com "auto", é usada a interface padrão do Scapy (rota padrão)."""
+
+    class FakeConf:
+        iface = type("Iface", (), {"name": "enP15180p0s0"})()
+
+    monkeypatch.setattr(capture, "conf", FakeConf())
+    assert resolve_interface("auto") == "enP15180p0s0"
+
+
+def test_resolve_interface_auto_rejects_loopback(monkeypatch):
+    """Sem rota padrão, a detecção cai no loopback e é recusada com erro claro."""
+
+    class FakeConf:
+        iface = type("Iface", (), {"name": "lo"})()
+
+    monkeypatch.setattr(capture, "conf", FakeConf())
+    monkeypatch.setattr(capture, "get_if_list", lambda: ["lo", "eth0"])
+    with pytest.raises(ValueError, match="Could not detect the default interface"):
+        resolve_interface("auto")

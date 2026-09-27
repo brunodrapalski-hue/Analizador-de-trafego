@@ -56,7 +56,11 @@ def build_parser() -> argparse.ArgumentParser:
         "capture", help="capture packets from an interface or read a pcap file"
     )
     source = capture.add_mutually_exclusive_group(required=True)
-    source.add_argument("-i", "--iface", help="network interface, e.g. eth0")
+    source.add_argument(
+        "-i",
+        "--iface",
+        help='network interface, e.g. eth0, or "auto" for the default route interface',
+    )
     source.add_argument("-r", "--pcap", type=Path, help="pcap file to read")
     capture.add_argument(
         "-c",

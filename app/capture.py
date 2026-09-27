@@ -1,7 +1,8 @@
 """Captura ao vivo (sniff) e leitura de .pcap (PcapReader).
 
 Os dois modos usam o mesmo PacketCollector. count, duration e filtro BPF
-existem apenas na captura ao vivo. O buffer pendente é gravado e a sessão
+existem apenas na captura ao vivo. Com interface "auto", é usada a interface
+da rota padrão da máquina. O buffer pendente é gravado e a sessão
 é encerrada no finally de cada função.
 """
 
@@ -9,6 +10,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+from scapy.config import conf
 from scapy.interfaces import get_if_list
 from scapy.packet import Packet
 from scapy.sendrecv import sniff
@@ -18,6 +20,8 @@ from app.parser import PacketRecord, parse_packet
 from app.storage import Storage
 
 logger = logging.getLogger(__name__)
+
+AUTO_INTERFACE = "auto"
 
 
 @dataclass(frozen=True)
@@ -70,6 +74,26 @@ class PacketCollector:
         return CaptureResult(self.session_id, self.packets_stored, self.packets_ignored)
 
 
+def resolve_interface(interface: str) -> str:
+    """Retorna a interface informada ou, com "auto", a da rota padrão.
+
+    O nome da interface principal muda entre máquinas (ex.: eth0 no WSL2
+    padrão, enP15180p0s0 no modo espelhado), por isso "auto" usa a escolha
+    do Scapy, que segue a rota padrão, como o comando "ip route".
+    """
+    if interface != AUTO_INTERFACE:
+        return interface
+
+    default = getattr(conf.iface, "name", None) or str(conf.iface or "")
+    if not default or default == "lo":
+        raise ValueError(
+            "Could not detect the default interface. "
+            "Use --iface with one of: " + ", ".join(get_if_list())
+        )
+    logger.info("Interface detected automatically: %s", default)
+    return default
+
+
 def capture_live(
     storage: Storage,
     interface: str,
@@ -82,6 +106,7 @@ def capture_live(
 
     count conta todos os pacotes recebidos após o filtro BPF, inclusive não-IP.
     """
+    interface = resolve_interface(interface)
     # Validada antes de criar a sessão: interface inexistente não gera registro.
     available = get_if_list()
     if interface not in available:

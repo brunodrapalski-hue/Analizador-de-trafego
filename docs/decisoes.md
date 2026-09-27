@@ -34,8 +34,8 @@ Cada decisão registra a escolha, o motivo e o custo aceito.
 ### D2 — Python 3.13 e Scapy 2.7.0
 
 - **Decisão:** imagem `python:3.13-slim` e dependências com versão fixada em `requirements*.txt`.
-- **Por quê:** Python é a linguagem preferencial do desafio e Scapy é a biblioteca sugerida. A versão 3.13 é a mais recente que o Scapy 2.7.0 declara como suportada.
-- **Custo:** não usei a versão mais recente do Python.
+- **Por quê:** Python é a linguagem preferencial do desafio e Scapy é a biblioteca sugerida. A versão 3.13 é suportada pelo Scapy 2.7.0.
+- **Custo:** Não usei a versão mais recente do Python.
 
 ### D3 — Captura ao vivo e leitura de `.pcap`
 

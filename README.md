@@ -1,4 +1,4 @@
-[README.md](https://github.com/user-attachments/files/32691087/README.md)
+
 # Analisador de Tráfego de Rede
 
 [![CI](https://github.com/brunodrapalski-hue/Analizador-de-trafego/actions/workflows/ci.yml/badge.svg)](https://github.com/brunodrapalski-hue/Analizador-de-trafego/actions/workflows/ci.yml)
@@ -6,6 +6,10 @@
 Aplicação em Python, executada em Docker.
 
 Uma aplicação para a análise de tráfego com a responsabilidade de capturar pacotes de uma interface de rede e exibir estatísticas básicas.
+
+## Por onde começar
+
+Passo a passo para preparar o ambiente, executar a aplicação e conferir o resultado de cada comando. Siga as etapas no documento a seguir: **[Guia de execução e validação](docs/validacao.md)**.
 
 ## Atendimento aos requisitos
 
@@ -18,7 +22,7 @@ Uma aplicação para a análise de tráfego com a responsabilidade de capturar p
 | Top 5 IPs de origem e de destino | Quatro rankings: origem e destino, por pacotes e por bytes |
 | Armazenamento em banco de dados | SQLite (`data/traffic.db`), com as tabelas `capture_sessions` e `packets` |
 | Python + Docker | Python 3.13, Dockerfile multi-stage e Docker Compose |
-| Documentação e justificativas | Este README e a pasta [docs/](#acerca-de-documentações) |
+| Documentação e justificativas | Este README e a pasta DOCS |
 
 ## Como funciona
 
@@ -36,11 +40,7 @@ flowchart LR
 - **Gravação:** em lotes (padrão: 100 pacotes por transação). Cada captura gera uma sessão no banco.
 - **Payload:** o conteúdo dos pacotes não é gravado.
 
-## Por onde começar
-
-Passo a passo para preparar o ambiente, executar a aplicação e conferir o resultado de cada comando. Siga as etapas no documento a seguir: **[guia de execução e validação](docs/validacao.md)**.
-
-## Resultado de referência — `samples/demo.pcap`
+## Resultado de referência
 
 | Métrica | Valor |
 |---|---:|
@@ -53,7 +53,7 @@ Passo a passo para preparar o ambiente, executar a aplicação e conferir o resu
 | 1º IP de origem por bytes | 4.228.31.150 (589.329) |
 | 1º IP de destino por pacotes | 172.19.40.48 (116) |
 
-As contagens principais da amostra são verificadas por testes automatizados. Os rankings completos e a conferência no Wireshark estão no [guia de validação](docs/validacao.md).
+As contagens principais da amostra são verificadas por testes automatizados. Os rankings completos e a conferência no Wireshark estão no [Guia de validação](docs/validacao.md).
 
 ## Referência de comandos
 
@@ -106,6 +106,15 @@ No GitHub Actions, o CI executa o mesmo comando a cada push na `main` e em pull 
 - Apenas metadados são gravados: horário, versão IP, IPs, protocolo e tamanho do frame.
 - O container usa `network_mode: host` para enxergar as interfaces do host e declara `NET_RAW` para abrir sockets brutos. Não usa `privileged` e não adiciona `NET_ADMIN`.
 - O processo roda como root dentro do container, com o conjunto padrão de capabilities do Docker.
+
+## Desenvolvimento
+
+- **Ambiente:** Windows 11 com WSL2 (Ubuntu 24.04) e Docker Engine, editando pelo VS Code conectado ao WSL. Ambiente descrito no guia de validação.
+- **Versionamento:** Git e GitHub, com commits por etapa: imagem base → parser e testes → persistência → captura → estatísticas → qualidade e CI → documentação.
+- **Validação:**
+  - 41 testes automatizados;
+  - amostra `samples/demo.pcap` gravada em ambiente controlado, com números conferidos de forma independente (Wireshark/tcpdump);
+  - captura ao vivo validada manualmente ([evidências](docs/evidencias/)).
 
 ## Acerca de limitações
 

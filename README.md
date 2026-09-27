@@ -7,9 +7,11 @@ Aplicação em Python, executada em Docker.
 
 Uma aplicação para a análise de tráfego com a responsabilidade de capturar pacotes de uma interface de rede e exibir estatísticas básicas.
 
+
 ## Por onde começar
 
 Passo a passo para preparar o ambiente, executar a aplicação e conferir o resultado de cada comando. Siga as etapas no documento a seguir: **[Guia de execução e validação](docs/validacao.md)**.
+
 
 ## Atendimento aos requisitos
 
@@ -23,6 +25,7 @@ Passo a passo para preparar o ambiente, executar a aplicação e conferir o resu
 | Armazenamento em banco de dados | SQLite (`data/traffic.db`), com as tabelas `capture_sessions` e `packets` |
 | Python + Docker | Python 3.13, Dockerfile multi-stage e Docker Compose |
 | Documentação e justificativas | Este README e a pasta DOCS |
+
 
 ## Como funciona
 
@@ -40,6 +43,7 @@ flowchart LR
 - **Gravação:** em lotes (padrão: 100 pacotes por transação). Cada captura gera uma sessão no banco.
 - **Payload:** o conteúdo dos pacotes não é gravado.
 
+
 ## Resultado de referência
 
 | Métrica | Valor |
@@ -55,6 +59,7 @@ flowchart LR
 
 As contagens principais da amostra são verificadas por testes automatizados. Os rankings completos e a conferência no Wireshark estão no [Guia de validação](docs/validacao.md).
 
+
 ## Referência de comandos
 
 | Comando | Função |
@@ -66,11 +71,13 @@ As contagens principais da amostra são verificadas por testes automatizados. Os
 
 Todos os comandos são executados com `docker compose run --rm analyzer <comando>`.
 
+
 | Opção (só captura ao vivo) | Função |
 |---|---|
 | `-c`, `--count N` | Para após N frames que passarem pelo filtro (IP ou não-IP) |
 | `-t`, `--duration N` | Para após N segundos |
 | `-f`, `--filter EXPR` | Filtro BPF, com a mesma sintaxe do tcpdump (ex.: `"tcp or udp"`) |
+
 
 | Variável de ambiente | Padrão | Função |
 |---|---|---|
@@ -79,6 +86,7 @@ Todos os comandos são executados com `docker compose run --rm analyzer <comando
 
 O banco fica em `./data` (volume) e persiste entre execuções. Uma interface inexistente gera um erro que lista as interfaces disponíveis.
 
+
 ## Qualidade
 
 ```bash
@@ -86,6 +94,7 @@ docker compose run --rm -T --build quality
 ```
 
 Esse comando executa, na sua máquina, a mesma verificação de qualidade usada no CI. Ela roda dentro de uma imagem de testes, separada da imagem de execução, e passa por quatro ferramentas, nesta ordem:
+
 
 | Ferramenta | O que verifica |
 |---|---|
@@ -100,6 +109,7 @@ Esse comando executa, na sua máquina, a mesma verificação de qualidade usada 
 
 No GitHub Actions, o CI executa o mesmo comando a cada push na `main` e em pull requests. Em seguida, faz o build da imagem de execução e a analisa com Trivy. O build falha se houver vulnerabilidade CRITICAL com correção disponível. Os achados HIGH do sistema base ficam registrados em [relatório](docs/security/trivy-report.txt).
 
+
 ## Privilégios e uso responsável
 
 - A captura deve ser feita apenas em redes e equipamentos para os quais há autorização.
@@ -107,14 +117,13 @@ No GitHub Actions, o CI executa o mesmo comando a cada push na `main` e em pull 
 - O container usa `network_mode: host` para enxergar as interfaces do host e declara `NET_RAW` para abrir sockets brutos. Não usa `privileged` e não adiciona `NET_ADMIN`.
 - O processo roda como root dentro do container, com o conjunto padrão de capabilities do Docker.
 
+
 ## Desenvolvimento
 
 - **Ambiente:** Windows 11 com WSL2 (Ubuntu 24.04) e Docker Engine, editando pelo VS Code conectado ao WSL. Ambiente descrito no guia de validação.
-- **Versionamento:** Git e GitHub, com commits por etapa: imagem base → parser e testes → persistência → captura → estatísticas → qualidade e CI → documentação.
+- **Versionamento:** Git e GitHub, com commits por etapas.
 - **Validação:**
-  - 41 testes automatizados;
-  - amostra `samples/demo.pcap` gravada em ambiente controlado, com números conferidos de forma independente (Wireshark/tcpdump);
-  - captura ao vivo validada manualmente ([evidências](docs/evidencias/)).
+
 
 ## Acerca de limitações
 
@@ -122,6 +131,7 @@ No GitHub Actions, o CI executa o mesmo comando a cada push na `main` e em pull 
 - O SQLite atende a um processo gravando por vez. Para vários sensores simultâneos, a evolução seria PostgreSQL, com adaptação da persistência e das consultas.
 - Os resultados da captura ao vivo dependem da interface e do tráfego do ambiente.
 - No WSL2, a captura vê o tráfego do próprio WSL, não o de todo o Windows.
+
 
 ## Acerca da documentação
 

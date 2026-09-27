@@ -17,25 +17,24 @@ Cada decisão registra a escolha, o motivo e o custo aceito.
 | D11 | Gravação | Em lotes, com gravação do restante no encerramento |
 | D12 | Interface | CLI com tabelas no terminal |
 | D13 | Verificações | Quality gate e scan da imagem no CI |
+| D14 | Formato de entrega | Código no GitHub + Docker, e não uma VM exportada |
 
 ---
 
 ### D1 — Linux (ou WSL2) com Docker
 
 - **Decisão:** executar a aplicação em Linux. No Windows, utilizar WSL2 com Ubuntu 24.04 e Docker Engine instalado dentro desse ambiente.
-
-- **Por quê:** a captura ao vivo precisa enxergar uma interface de rede do ambiente em que o tráfego de teste é gerado. Com o Docker Engine executado dentro do WSL2, o container utiliza a rede desse Linux e consegue capturar na interface `eth0` do WSL.
-
-  - Essa escolha mantém geração de tráfego, identificação da interface (um ponto que foi exigido pelo desafio = "uma interface de rede especificada".), execução do Docker e captura no mesmo contexto de rede. Durante a validação, podemos identificar a interface com `ip -br link`, iniciar a captura e gerar tráfego no próprio Ubuntu, tornando mais clara a relação entre o tráfego produzido e os pacotes observados pela aplicação.
-  -Também permite manter o guia concentrado em um único terminal Linux. Comandos como `ip -br link`, `ping -c`, `ls` e `rm -f` podem ser utilizados de forma consistente, sem manter instruções equivalentes para PowerShell e Linux.
-  - O Docker Desktop adicionaria outra camada entre o Windows e o ambiente Linux onde os containers são executados. Isso tornaria menos direta a relação entre a interface escolhida, o tráfego gerado e aquilo que o container consegue observar. A demonstração da captura ao vivo, requisito principal do desafio ficaria mais difícil de reproduzir e explicar.
-
-- **Custo:** é necessário preparar o WSL2 e instalar o Docker Engine dentro do Ubuntu. Além disso, a captura realizada nesse ambiente representa o tráfego do próprio WSL, não todo o tráfego gerado pelo Windows.
+- **Por quê:** a captura ao vivo precisa enxergar uma interface de rede do ambiente em que o tráfego de teste é gerado. Com o Docker Engine executado dentro do WSL2, o container utiliza a rede desse Linux e captura na interface principal do WSL (ex.: `eth0`).
+  - Essa escolha mantém a geração de tráfego, a interface (o desafio pede a captura em "uma interface de rede especificada"), o Docker e a captura no mesmo contexto de rede. Durante a validação, a captura é iniciada e o tráfego é gerado no próprio Ubuntu, o que torna clara a relação entre o tráfego produzido e os pacotes observados pela aplicação.
+  - Também permite manter o guia em um único terminal Linux. Comandos como `ip -br link`, `ping -c`, `ls` e `rm -f` funcionam de forma consistente, sem instruções equivalentes para PowerShell.
+  - O Docker Desktop adicionaria outra camada entre o Windows e o ambiente Linux em que os containers são executados. Isso tornaria menos direta a relação entre a interface escolhida, o tráfego gerado e o que o container consegue observar. A demonstração da captura ao vivo, requisito principal do desafio, ficaria mais difícil de reproduzir e explicar.
+- **Nome da interface:** ele muda entre máquinas: `eth0` no WSL2 padrão, outro nome no modo de rede espelhado (ex.: `enP15180p0s0`), `enp0s3` ou `wlp2s0` em Linux nativo. Por isso existe a opção `--iface auto`, que usa a interface da rota padrão (a escolha padrão do Scapy). A captura foi validada nos dois modos de rede do WSL2.
+- **Custo:** é necessário preparar o WSL2 e instalar o Docker Engine dentro do Ubuntu. A captura foi validada com tráfego gerado dentro do próprio WSL; não há garantia de que o tráfego de programas do Windows apareça.
 
 ### D2 — Python 3.13 e Scapy 2.7.0
 
-- **Decisão:** imagem `python:3.13-slim`.
-- **Por quê:** Python é a linguagem preferencial do desafio e Scapy é a biblioteca sugerida.
+- **Decisão:** imagem `python:3.13-slim` e dependências com versão fixada em `requirements*.txt`.
+- **Por quê:** Python é a linguagem preferencial do desafio e Scapy é a biblioteca sugerida. A versão 3.13 é a mais recente que o Scapy 2.7.0 declara como suportada.
 - **Custo:** não usei a versão mais recente do Python.
 
 ### D3 — Captura ao vivo e leitura de `.pcap`
@@ -118,3 +117,14 @@ Cada decisão registra a escolha, o motivo e o custo aceito.
   - O primeiro scan apontou 2 HIGH corrigíveis (`msgpack` e `setuptools`), ambos embutidos no pip. O pip só é necessário no build e foi removido da imagem de execução ([antes](security/trivy-report-before-fix.txt), [depois](security/trivy-report.txt)).
   - Restam 45 HIGH em pacotes do Debian da imagem base, sem correção publicada, e 0 CRITICAL. A imagem não está livre de vulnerabilidades. Esses achados são acompanhados a cada execução do CI e somem ao atualizar a imagem base quando houver correção.
 - **Custo:** a imagem base não é fixada por digest, então a contagem do Trivy pode mudar ao longo do tempo.
+
+### D14 — Código no GitHub + Docker, e não uma VM exportada
+
+- **Decisão:** entregar o código-fonte no GitHub, com `Dockerfile` e `docker-compose.yml`, para o ambiente ser construído na máquina de quem avalia. Não entregar um disco de máquina virtual pronto (ex.: `.ova`).
+- **Por quê:**
+  - **Requisito:** o desafio pede execução em Docker; uma VM seria uma camada a mais, e não o que foi pedido.
+  - **Tamanho:** o projeto tem poucos MB, enquanto um disco de VM com Ubuntu, Docker e imagens teria vários GB.
+  - **Transparência:** o código e o `Dockerfile` podem ser lidos antes de qualquer execução. Um disco de VM esconde o conteúdo, e executar uma VM recebida de terceiros é um risco que muitas empresas não aceitam.
+  - **Pré-requisito:** a VM exigiria um hypervisor (VirtualBox, VMware ou Hyper-V), que também costuma ser restrito em máquinas corporativas. Uma VM x86 também não roda de forma prática em Macs com chip Apple.
+  - **Rastreabilidade:** o histórico de commits e os testes no CI só existem com o código versionado.
+- **Custo:** quem avalia precisa ter Docker (no Windows, com WSL2; ver D1). Se não for possível instalar, o projeto pode ser avaliado sem executar, pelo resultado de referência no README, pelas saídas reais em [evidencias/](evidencias/) e pelos testes no CI.

@@ -8,7 +8,7 @@ A aplicação é uma CLI em Python executada em Docker. Ela recebe pacotes de um
 |---|---|---|
 | `cli.py` | Interpreta comandos e opções, valida combinações, trata erros e define o código de saída | Não interpreta pacotes nem escreve SQL |
 | `config.py` | Lê `TRAFFIC_DB_PATH` e `TRAFFIC_BATCH_SIZE` (com validação) | — |
-| `capture.py` | Obtém os pacotes (ao vivo ou de arquivo) e, via `PacketCollector`, acumula, grava em lotes e fecha a sessão | Não conhece o schema |
+| `capture.py` | Resolve a interface (`auto` = rota padrão), obtém os pacotes (ao vivo ou de arquivo) e, via `PacketCollector`, acumula, grava em lotes e fecha a sessão | Não conhece o schema |
 | `parser.py` | Converte um pacote Scapy em `PacketRecord` imutável, ou retorna `None` se não for IP | Não grava nada |
 | `storage.py` | Cria o schema, registra sessões e insere lotes em transações | Não calcula estatísticas |
 | `stats.py` | Calcula totais, protocolos e rankings com consultas SQL parametrizadas | Não formata a saída |
@@ -41,12 +41,12 @@ sequenceDiagram
     participant STO as storage.py
     participant STA as stats.py
 
-    U->>CLI: capture --iface eth0 --duration 30
+    U->>CLI: capture --iface auto --duration 30
     CLI->>CLI: valida as opções
     CLI->>STO: abre o banco (cria o schema se necessário)
     CLI->>CLI: lê e valida TRAFFIC_BATCH_SIZE
     CLI->>CAP: capture_live()
-    CAP->>CAP: valida a interface
+    CAP->>CAP: resolve "auto" e valida a interface
     CAP->>STO: start_session()
     loop cada pacote
         CAP->>CAP: parse_packet() + buffer
@@ -64,7 +64,7 @@ sequenceDiagram
 
 - **Fim normal:** o `sniff` do Scapy retorna quando atinge `--count`, `--duration` ou recebe Ctrl+C. O Scapy trata o Ctrl+C internamente.
 - **Gravação garantida:** em seguida, o `finally` de `capture_live` chama `PacketCollector.finish()`, que grava o lote pendente e registra o fim e os contadores da sessão. O mesmo `finally` existe em `read_pcap`.
-- **Validações antes da sessão:** interface inexistente, arquivo ausente, `TRAFFIC_BATCH_SIZE` inválido e opções ao vivo usadas com `--pcap` são rejeitados antes de a sessão ser criada.
+- **Validações antes da sessão:** interface inexistente ou não detectada (`auto`), arquivo ausente, `TRAFFIC_BATCH_SIZE` inválido e opções ao vivo usadas com `--pcap` são rejeitados antes de a sessão ser criada.
 - **Erros depois da sessão:** um filtro BPF inválido, ou um arquivo que não é pcap, gera erro depois que a sessão foi criada. A sessão fica registrada com 0 pacotes.
 
 ## Execução em Docker

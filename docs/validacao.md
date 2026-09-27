@@ -4,6 +4,8 @@ Passo a passo para preparar o ambiente, executar a aplicação e conferir o resu
 
 A referência numérica é o arquivo `samples/demo.pcap`, cujo resultado é sempre o mesmo. A captura ao vivo varia com o ambiente: ela serve para comprovar o funcionamento da captura, não para comparar números.
 
+<br>
+
 ## Por onde começar
 
 | Seu caso | Comece em |
@@ -15,21 +17,28 @@ A referência numérica é o arquivo `samples/demo.pcap`, cujo resultado é semp
 
 ---
 
+<br>
+
 ## Etapa 1 — Preparar o Windows (Caso A)
 
 **Objetivo:** Instalar recurso do Windows que permite executar um ambiente Linux completo, sem precisar de uma máquina virtual ou de um sistema de dual boot. Realizado uma única vez.
 
 ### 1.1 Instalar o WSL2 com Ubuntu
 
+<br>
+
 Abra o **PowerShell como administrador** e execute:
 
 ```powershell
 wsl --install -d Ubuntu-24.04
 ```
+<br>
 
 **Resultado esperado:** mensagens de download e instalação, terminando com o pedido para reiniciar o computador. É necessário reiniciar.
 
 > Se aparecer um erro sobre virtualização, ative o recurso de virtualização na BIOS/UEFI do seu dispositvo e repita o comando.
+
+<br>
 
 ### 1.2 Criar o usuário do Ubuntu
 
@@ -37,6 +46,8 @@ Depois de reiniciar, o Ubuntu deve abre sozinho. Se não abrir, procure "Ubuntu-
 
 **Resultado esperado:** um prompt como `usuario@computador:~$`. 
 > A partir daqui, os comandos são executados neste terminal do Ubuntu, exceto quando indicado PowerShell.
+
+<br>
 
 ### 1.3 Confirmar que o Ubuntu está no WSL2
 
@@ -46,12 +57,16 @@ No **PowerShell ou Prompt de Comando** (não precisa ser administrador): execute
 wsl -l -v
 ```
 
+<br>
+
 **Resultado esperado:** a linha do Ubuntu com `VERSION` igual a `2`:
 
 ```text
   NAME            STATE           VERSION
 * Ubuntu-24.04    Running         2
 ```
+
+<br>
 
 ### 1.4 Instalar Git e Docker Engine no Ubuntu
 
@@ -67,8 +82,9 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.
 sudo apt-get update
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
-
 **Resultado esperado:** os pacotes são instalados sem mensagem de erro.
+
+<br>
 
 ### 1.5 Usar o Docker sem `sudo`
 
@@ -88,11 +104,12 @@ Agora no **Terminal do Ubuntu** novamente e confira:
 groups
 systemctl is-active docker
 ```
+<br>
 
 **Resultado esperado:** `docker` aparece na lista de grupos, e o serviço responde `active`.
 
-
 ---
+<br>
 
 ## Etapa 2 — Verificar os pré-requisitos
 
@@ -105,6 +122,8 @@ docker compose version
 docker run --rm hello-world
 ```
 
+<br>
+
 **Resultado esperado:**
 
 | Comando | Saída (as versões podem variar) |
@@ -116,7 +135,7 @@ docker run --rm hello-world
 
 
 ---
-
+<br>
 ## Etapa 3 — Importação do projeto
 
 Iremos agora clonar o repositório. Por ser público não necessitará de nenhuma autenticação.
@@ -136,6 +155,8 @@ ls
 
 ---
 
+<br>
+
 ## Etapa 4 — Construir a imagem
 
 **Objetivo:** Gerar a imagem da aplicação as demais dependências.
@@ -153,6 +174,8 @@ docker compose run --rm analyzer --help
 - O `--help` mostra `usage: traffic-analyzer [-h] [--db DB] {capture,stats,sessions} ...`.
 
 ---
+
+<br>
 
 ## Etapa 5 — Analisar o PCAP de referência
 
@@ -198,9 +221,13 @@ As contagens principais (300, 284, 16, TCP, UDP, ICMP e o 1º colocado em pacote
 
 ---
 
+<br>
+
 ## Etapa 6 — Hora de Iniciar a Captura ao vivo
 
 **Objetivo:** comprovar a captura em uma interface real do ambiente.
+
+<br>
 
 ### 6.1 Identificar a interface
 
@@ -217,6 +244,8 @@ docker0          DOWN           02:42:xx:xx:xx:xx <NO-CARRIER,BROADCAST,MULTICAS
 ```
 
 Em Linux nativo, o nome costuma ser outro (ex.: `enp0s3`, `wlp2s0`). Nos comandos abaixo, troque `eth0` pelo nome da sua interface.
+
+<br>
 
 ### 6.2 Capturar por 30 segundos gerando tráfego
 
@@ -239,6 +268,8 @@ curl -s -o /dev/null https://github.com && echo OK
 
 **Resultado esperado no terminal 1:** depois de 30 s, a captura termina sozinha, mostra `INFO: Session 2 finished: ...` e exibe as tabelas no mesmo formato da Etapa 5, com **ICMP** e os protocolos. Os números variam a cada execução. Exemplo real: [evidencias/03](evidencias/03-captura-ao-vivo.txt).
 
+<br>
+
 ### 6.3 Outras formas de encerrar e filtrar (é opcional para explorar)
 
 | Comando | Comportamento |
@@ -249,6 +280,8 @@ curl -s -o /dev/null https://github.com && echo OK
 | Sem `--count` e sem `--duration` | Captura até Ctrl+C. Os pacotes coletados são gravados e o relatório é exibido. |
 
 ---
+
+<br>
 
 ## Etapa 7 — Consultar os dados gravados
 
@@ -269,6 +302,8 @@ docker compose run --rm analyzer stats
 **O que comprova:** o banco `data/traffic.db` fica no host e sobrevive ao `--rm`, que remove só o container.
 
 ---
+
+<br>
 
 ## Etapa — Testes e verificações de qualidade
 
@@ -293,6 +328,8 @@ O script para na primeira falha. O CI no GitHub Actions executa esse mesmo coman
 
 ---
 
+<br>
+
 ## Etapa — Limpeza
 
 Cada captura grava uma sessão nova no arquivo data/traffic.db, e esse arquivo continua existindo depois que o container termina. Essa etapa serve para zerar o banco de dados e deixar o ambiente como estava antes do ensaio.É isso que permite consultar com sessions e stats`--rm`. 
@@ -306,6 +343,8 @@ rm -f data/traffic.db
 Se aparecer `Permission denied`, use `sudo rm -f data/traffic.db`. Quando a pasta `data/` é criada pelo Docker, ela pertence ao root. O banco é recriado automaticamente na próxima execução.
 
 ---
+
+<br>
 
 ## Troubleshooting
 

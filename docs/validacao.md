@@ -368,10 +368,6 @@ tests
 
 <br>
 
-
-
-
-
 ## Etapa 4 — Construir a imagem
 
 **Objetivo:** Gerar a imagem da aplicação as demais dependências.
@@ -384,23 +380,34 @@ docker compose run --rm analyzer --help
 
 **Resultado esperado:**
 
-- O build termina sem erro. Na primeira vez leva alguns minutos, porque baixa a imagem base.
-- `docker image ls` mostra `traffic-analyzer` com a tag `1.0.0`.
+- O build termina sem erro. Na primeira vez leva uns segundos a mais, porque baixa a imagem base.
+- Sera mostrad `traffic-analyzer` com a tag `1.0.0`.
 - O `--help` mostra `usage: traffic-analyzer [-h] [--db DB] {capture,stats,sessions} ...`.
 
 ---
 
 <br>
 
-## Etapa 5 — Analisar o PCAP de referência
+# Etapa 5 — Validar o processamento com o PCAP de referência
 
-**Objetivo:** Agora vamos validar o pipeline completo (leitura → parser → SQLite → estatísticas) com uma entrada fixa afim de validação.
+**Objetivo:** validar, com uma entrada conhecida e reproduzível, o fluxo de processamento da aplicação: leitura dos pacotes → interpretação dos metadados → persistência no SQLite → cálculo e apresentação das estatísticas.
+
+O arquivo `samples/demo.pcap` foi incluído como amostra de referência para esta validação. Como seu conteúdo não muda entre as execuções, os resultados obtidos podem ser comparados com valores conhecidos, sem depender do tráfego disponível na rede naquele momento.
+
+> Esta etapa não substitui a captura ao vivo. O `.pcap` é utilizado para validar de o processamento, o armazenamento e as estatísticas. A captura real de uma interface será validada separadamente na próxima etapa.
+
+Continue no diretório do terminal ubuntu dentro do: ~/Analizador-de-trafego
+
+Execute:
 
 ```bash
 docker compose run --rm analyzer capture --pcap samples/demo.pcap
 ```
 
-**Resultado esperado:** primeiro a linha `INFO: Session 1 finished: 284 packets stored, 16 non-IP packets ignored.`, e em seguida as tabelas abaixo. [evidencias/01](evidencias/01-estatisticas-demo-pcap.txt).
+> O comando lê os pacotes da amostra pelo mesmo `PacketCollector` utilizado pela captura ao vivo, grava os metadados no banco e, ao final da sessão, calcula e exibe as estatísticas correspondentes.
+
+**Resultado esperado:** são exibidos o resumo da sessão, a distribuição por protocolo e os rankings de IPs de origem e destino. A saída completa utilizada como referência está disponível em [docs/evidencias/01-estatisticas-demo-pcap.txt](evidencias/01-estatisticas-demo-pcap.txt).
+
 
 | Summary | Valor |
 |---|---:|
@@ -423,20 +430,34 @@ docker compose run --rm analyzer capture --pcap samples/demo.pcap
 | 4 | 142.251.155.119 (18) | 20.184.175.6 (8.032) | 142.251.155.119 (18) | 239.255.255.250 (2.666) |
 | 5 | 108.158.137.127 (12) | 104.20.23.154 (6.058) | 108.158.137.57 (18) | 108.158.137.127 (2.052) |
 
-**Como interpretar:**
-
-- **300 = 284 + 16:** os 16 frames não-IP (ARP) são contados, mas não viram linha no banco. O percentual por protocolo é calculado sobre os 284 pacotes IP.
-- **UDP inclui IPv6:** 2 dos 30 pacotes UDP são IPv6 (mDNS).
-- **Empate no ranking:** na 4ª e na 5ª posição do destino há 18 pacotes cada. O desempate é por bytes (1.972 × 1.539).
-- **Frames grandes:** alguns frames passam de 1.514 bytes (o maior tem 64.146). Isso vem do offload de segmentação na captura original (ver D8 em [decisoes.md](decisoes.md)).
-
-**Conferência independente (opcional):** abra `samples/demo.pcap` no Wireshark. Os filtros `ip or ipv6`, `arp`, `tcp`, `udp` e `icmp` mostram 284, 16, 234, 30 e 20 frames. Em `Statistics > Endpoints > IPv4`, as colunas Tx (origem) e Rx (destino) correspondem aos rankings.
-
-As contagens principais (300, 284, 16, TCP, UDP, ICMP e o 1º colocado em pacotes) também são verificadas por testes automatizados.
-
 ---
 
 <br>
+
+## Etapa 6 — Validar a captura ao vivo
+
+Com o ambiente tudo validado, vamos agora a entrega principal do desafio que é capturar pacotes em tempo real a partir de uma interface de rede especificada. Na etapa anterior, o arquivo `samples/demo.pcap` foi utilizado como uma entrada conhecida para validar construção, o processamento, a persistência e as estatísticas. 
+
+Agora a origem dos pacotes será a **interface de rede real do ambiente**. A aplicação utilizará o Scapy para escutar essa interface, processar os pacotes recebidos, armazenar no SQLite e apresentar as estatísticas ao final da captura. No WSL2, o tráfego será gerado dentro do próprio Ubuntu. Como o container conseguira observar a interface de rede desse ambiente Linux.
+
+<br>
+
+### 6.1 Identificar a interface de rede
+
+Continue no **terminal do Ubuntu** e execute:
+
+```bash
+ip -br link
+```
+
+
+
+
+
+
+
+
+
 
 ## Etapa 6 — Hora de Iniciar a Captura ao vivo
 

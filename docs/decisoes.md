@@ -26,7 +26,7 @@ Cada decisão registra a escolha, o motivo e o custo aceito.
 
 - **Por quê:** a captura ao vivo precisa enxergar uma interface de rede do ambiente em que o tráfego de teste é gerado. Com o Docker Engine executado dentro do WSL2, o container utiliza a rede desse Linux e consegue capturar na interface `eth0` do WSL.
 
-  -Essa escolha mantém geração de tráfego, identificação da interface (um ponto que foi exigido pelo desafio = "uma interface de rede especificada".), execução do Docker e captura no mesmo contexto de rede. Durante a validação, podemos identificar a interface com `ip -br link`, iniciar a captura e gerar tráfego no próprio Ubuntu, tornando mais clara a relação entre o tráfego produzido e os pacotes observados pela aplicação.
+  - Essa escolha mantém geração de tráfego, identificação da interface (um ponto que foi exigido pelo desafio = "uma interface de rede especificada".), execução do Docker e captura no mesmo contexto de rede. Durante a validação, podemos identificar a interface com `ip -br link`, iniciar a captura e gerar tráfego no próprio Ubuntu, tornando mais clara a relação entre o tráfego produzido e os pacotes observados pela aplicação.
   -Também permite manter o guia concentrado em um único terminal Linux. Comandos como `ip -br link`, `ping -c`, `ls` e `rm -f` podem ser utilizados de forma consistente, sem manter instruções equivalentes para PowerShell e Linux.
   - O Docker Desktop adicionaria outra camada entre o Windows e o ambiente Linux onde os containers são executados. Isso tornaria menos direta a relação entre a interface escolhida, o tráfego gerado e aquilo que o container consegue observar. A demonstração da captura ao vivo, requisito principal do desafio ficaria mais difícil de reproduzir e explicar.
 

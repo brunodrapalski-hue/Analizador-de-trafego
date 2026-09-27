@@ -8,9 +8,11 @@ Aplicação em Python, executada em Docker.
 Uma aplicação para a análise de tráfego com a responsabilidade de capturar pacotes de uma interface de rede e exibir estatísticas básicas.
 
 
+
 ## Por onde começar
 
 Passo a passo para preparar o ambiente, executar a aplicação e conferir o resultado de cada comando. Siga as etapas no documento a seguir: **[Guia de execução e validação](docs/validacao.md)**.
+
 
 
 ## Atendimento aos requisitos

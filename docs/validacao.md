@@ -136,6 +136,7 @@ docker run --rm hello-world
 
 ---
 <br>
+
 ## Etapa 3 — Importação do projeto
 
 Iremos agora clonar o repositório. Por ser público não necessitará de nenhuma autenticação.
